@@ -193,6 +193,57 @@ def refresh_web_deploy():
     subprocess.run([str(script)], check=True, cwd=str(ROOT))
 
 
+def push_release_to_github(version):
+    """Commit, tag, and push to `origin main` so the public repo tracks the
+    version we just shipped to the web. Stages MODIFICATIONS to tracked files
+    only (not new untracked files — those are the user's responsibility). All
+    git failures are reported but don't undo the FTP deploy that already
+    succeeded."""
+    if not (ROOT / ".git").exists():
+        print("  (skip github push — not a git repo)")
+        return
+
+    def run(cmd):
+        return subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT))
+
+    # Stage modifications to tracked files (e.g. the bumped APP_VERSION) but
+    # leave untracked files alone — those are the user's WIP.
+    staged = run(["git", "add", "-u"])
+    if staged.returncode != 0:
+        print(f"  ⚠  git add -u failed: {staged.stderr.strip()}")
+        return
+
+    porcelain = run(["git", "status", "--porcelain"]).stdout
+    if not porcelain.strip():
+        print("  (nothing changed since last commit — github push skipped)")
+        return
+
+    commit = run(["git", "commit", "-m", f"Release {version}"])
+    if commit.returncode != 0:
+        print(f"  ⚠  git commit failed: {commit.stderr.strip()}")
+        return
+
+    # Tag the release (annotated). Skip if the tag already exists (re-deploy
+    # of the same version) — that should be a rare edge case since deploy
+    # always bumps first, but handle it cleanly.
+    tag_check = run(["git", "rev-parse", "-q", "--verify", f"refs/tags/{version}"])
+    if tag_check.returncode != 0:
+        tag = run(["git", "tag", "-a", version, "-m", f"Release {version}"])
+        if tag.returncode != 0:
+            print(f"  ⚠  git tag {version} failed: {tag.stderr.strip()}")
+
+    push_main = run(["git", "push", "origin", "HEAD"])
+    if push_main.returncode != 0:
+        print(f"  ⚠  git push origin HEAD failed: {push_main.stderr.strip()}")
+        print(f"     local commit is in place — run `git push origin HEAD --tags` to retry.")
+        return
+    push_tags = run(["git", "push", "origin", "--tags"])
+    if push_tags.returncode != 0:
+        print(f"  ⚠  git push --tags failed: {push_tags.stderr.strip()}")
+        return
+    print(f"  pushed to GitHub as `Release {version}` + tag `{version}`")
+
+
 def upload_files(ftp, dry_run=False):
     for name in UPLOAD_FILES:
         local = WEB_DEPLOY / name
@@ -212,6 +263,8 @@ def main():
     parser = argparse.ArgumentParser(description="FTP deploy Lumin Chess web bundle")
     parser.add_argument("--dry-run", action="store_true",
                         help="Connect and list, but do not delete or upload")
+    parser.add_argument("--no-github", action="store_true",
+                        help="Skip the auto-commit/tag/push to the GitHub repo")
     args = parser.parse_args()
 
     if not WEB_DEPLOY.exists():
@@ -221,6 +274,7 @@ def main():
     creds = load_credentials()
     print(f"  target: {creds['user']}@{creds['host']}:{creds['port']} → /{creds['path'].strip('/')}/")
     print(f"  files:  {', '.join(UPLOAD_FILES)}")
+    new_version = None
     if args.dry_run:
         print(f"  mode:   dry-run\n")
     else:
@@ -249,6 +303,9 @@ def main():
             print("✓ dry-run complete (no changes made)")
         else:
             print("✓ deploy complete")
+            if new_version and not args.no_github:
+                print(f"▸ syncing GitHub")
+                push_release_to_github(new_version)
     finally:
         try:
             ftp.quit()
