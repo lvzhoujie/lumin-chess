@@ -1,0 +1,29 @@
+{
+  "name": "lumin-chess",
+  "version": "1.0.0",
+  "description": "Lumin Chess - a sliding pair puzzle game",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/copy-web.js",
+    "assets:png": "node scripts/svg-to-png.js",
+    "assets:android": "npm run assets:png && npx @capacitor/assets generate --android --iconBackgroundColor \"#1C1B1A\" --iconBackgroundColorDark \"#1C1B1A\" --splashBackgroundColor \"#F5F4F2\" --splashBackgroundColorDark \"#1C1B1A\"",
+    "cap:add:android": "npm run build && npx cap add android",
+    "cap:sync": "npm run build && npx cap sync android",
+    "android:build:debug": "cd android && ./gradlew assembleDebug",
+    "android:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
+    "android:apk": "npm run cap:sync && npm run android:build:debug"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0",
+    "puppeteer-core": "^24.43.1",
+    "sharp": "^0.33.5"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/haptics": "^7.0.5",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
+  }
+}

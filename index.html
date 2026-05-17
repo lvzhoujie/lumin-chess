@@ -1,0 +1,3157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F5F4F2">
+<title>Lumin Chess</title>
+<style>
+  :root {
+    --bg: #F5F4F2;
+    --surface: #FFFFFF;
+    --board: #D9D6D0;
+    --ink: #1C1B1A;
+    --muted: #7A7770;
+    --line: #E6E3DC;
+    --accent: #4F46E5;
+    --accent-soft: rgba(79, 70, 229, 0.14);
+    --accent-strong: rgba(79, 70, 229, 0.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: calc(max(56px, env(safe-area-inset-top)) + 24px) 16px max(24px, env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .header {
+    text-align: center;
+    width: 100%;
+    max-width: 420px;
+  }
+  .title {
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+  }
+  .level {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 44px;
+    margin-top: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 600;
+  }
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    margin-top: 4px;
+    letter-spacing: -0.02em;
+  }
+  .level-selector {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .level-dot {
+    min-width: 30px;
+    height: 30px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .level-dot.active {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+  .level-dot:hover:not(.active):not(.locked) {
+    background: rgba(28, 27, 26, 0.05);
+  }
+  .level-dot.locked {
+    opacity: 0.32;
+    cursor: not-allowed;
+    color: var(--muted);
+    border-color: var(--line);
+    background: transparent;
+  }
+  .level-dot .lock-icon {
+    width: 11px;
+    height: 11px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .stage {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 18px 0;
+  }
+  .board {
+    position: relative;
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+    background: var(--board);
+    border-radius: 22px;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 8px 24px rgba(28, 27, 26, 0.06);
+    /* Hand the board our own gestures — disables OS pinch/zoom/scroll inside. */
+    touch-action: none;
+  }
+  .cell {
+    position: relative;
+    background: var(--surface);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.18s ease, transform 0.12s ease;
+  }
+  .cell.target {
+    background: var(--accent-soft);
+  }
+  .cell.target:active {
+    transform: scale(0.97);
+  }
+  /* Blocked cells: render as off-board negative space, matching the board background. */
+  .cell.blocked {
+    background: var(--board);
+    cursor: default;
+    box-shadow: none;
+  }
+  .target-icon {
+    position: absolute;
+    color: var(--accent);
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(79, 70, 229, 0.15);
+    z-index: 2;
+  }
+  .piece {
+    width: 76%;
+    height: 76%;
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s;
+    z-index: 1;
+  }
+  .piece.black {
+    background: radial-gradient(circle at 32% 26%, #5b5853 0%, #2B2926 48%, #0E0D0B 100%);
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.32),
+      inset -3px -4px 8px rgba(0, 0, 0, 0.45),
+      inset 2px 3px 5px rgba(255, 255, 255, 0.06);
+  }
+  .piece.white {
+    background: radial-gradient(circle at 32% 26%, #FFFFFF 0%, #F2EFE6 55%, #D4CFBE 100%);
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.16),
+      inset -3px -4px 8px rgba(0, 0, 0, 0.08),
+      inset 2px 3px 5px rgba(255, 255, 255, 0.7);
+  }
+  .piece.gray {
+    background: radial-gradient(circle at 32% 26%, #C1BEB8 0%, #8A8782 50%, #4F4D49 100%);
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.22),
+      inset -3px -4px 8px rgba(0, 0, 0, 0.24),
+      inset 2px 3px 5px rgba(255, 255, 255, 0.2);
+  }
+  .piece.selected {
+    transform: scale(1.08);
+    box-shadow:
+      0 0 0 4px var(--accent),
+      0 8px 18px var(--accent-strong);
+  }
+  .piece.hint {
+    box-shadow:
+      0 6px 14px rgba(0, 0, 0, 0.18),
+      inset -3px -4px 8px rgba(0, 0, 0, 0.12),
+      0 0 0 2px rgba(79, 70, 229, 0.45);
+  }
+  .goal-marker {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .goal-marker.black {
+    background: radial-gradient(circle at 30% 25%, #4b4845 0%, #1C1B1A 70%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+  .goal-marker.white {
+    background: radial-gradient(circle at 30% 25%, #FFFFFF 0%, #E8E3D7 80%);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .btn {
+    padding: 12px 26px;
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    font-family: inherit;
+    letter-spacing: -0.005em;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn:active { transform: scale(0.96); }
+  .btn.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--line);
+  }
+  .btn.secondary:hover {
+    background: rgba(28, 27, 26, 0.04);
+    opacity: 1;
+  }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .win-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 27, 26, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadein 0.3s ease;
+  }
+  .win-overlay.active { display: flex; }
+  .win-card {
+    background: var(--bg);
+    padding: 40px 32px 28px;
+    border-radius: 28px;
+    text-align: center;
+    width: min(86vw, 340px);
+    animation: rise 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .win-title {
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.03em;
+  }
+  .win-sub {
+    margin-top: 4px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .win-unlock {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .win-locked {
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .win-stats {
+    display: flex;
+    justify-content: center;
+    gap: 36px;
+    margin-top: 22px;
+  }
+  .win-stat {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 600;
+    text-align: center;
+  }
+  .win-stat strong {
+    color: var(--ink);
+    font-size: 44px;
+    display: block;
+    margin-top: 6px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .win-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  /* Help button (top-right) — sits well clear of the device status bar. */
+  .help-btn {
+    position: absolute;
+    top: calc(max(56px, env(safe-area-inset-top)) + 28px);
+    right: 18px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 5;
+  }
+  .help-btn:hover {
+    background: rgba(28, 27, 26, 0.04);
+    color: var(--ink);
+  }
+  /* Trophy/leaderboard button — mirrors help-btn on the other side. */
+  .trophy-btn {
+    position: absolute;
+    top: calc(max(56px, env(safe-area-inset-top)) + 28px);
+    left: 18px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 5;
+  }
+  .trophy-btn:hover {
+    background: rgba(28, 27, 26, 0.04);
+    color: var(--ink);
+  }
+  .trophy-btn svg { width: 16px; height: 16px; }
+
+  /* Leaderboard overlay */
+  .leaderboard-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 27, 26, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 120;
+    animation: fadein 0.3s ease;
+  }
+  .leaderboard-overlay.active { display: flex; }
+  .leaderboard-card {
+    background: var(--bg);
+    padding: 32px 28px 24px;
+    border-radius: 28px;
+    width: min(86vw, 380px);
+    max-height: 82vh;
+    display: flex;
+    flex-direction: column;
+    animation: rise 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .leaderboard-title {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .leaderboard-sub {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .leaderboard-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .lb-tab {
+    min-width: 34px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lb-tab.active {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+  /* Match the level-selector lock styling so the two affordances feel identical. */
+  .lb-tab.locked {
+    opacity: 0.32;
+    cursor: not-allowed;
+    color: var(--muted);
+    border-color: var(--line);
+    background: transparent;
+  }
+  .lb-tab .lock-icon {
+    width: 11px;
+    height: 11px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .leaderboard-list {
+    min-height: 160px;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    /* Subtle scrollbar — visible but not heavy. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+  .leaderboard-list::-webkit-scrollbar { width: 6px; }
+  .leaderboard-list::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 3px;
+  }
+  .leaderboard-list::-webkit-scrollbar-track { background: transparent; }
+  .lb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+  .lb-table th {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 6px 8px;
+    text-align: left;
+  }
+  .lb-table th.lb-moves, .lb-table th.lb-time { text-align: right; }
+  .lb-table td {
+    font-size: 14px;
+    padding: 9px 8px;
+    border-top: 1px solid var(--line);
+    color: var(--ink);
+  }
+  .lb-table td:first-child {
+    width: 32px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .lb-table td.lb-moves {
+    text-align: right;
+    font-weight: 700;
+    width: 50px;
+  }
+  .lb-table td.lb-time {
+    text-align: right;
+    font-weight: 600;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    width: 50px;
+    font-size: 12px;
+  }
+  .lb-empty {
+    padding: 36px 12px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .leaderboard-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .leaderboard-actions .btn { min-width: 140px; }
+
+  /* Name-entry overlay (shown when a win qualifies for the top 10) */
+  .name-entry-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 27, 26, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 160;
+    animation: fadein 0.3s ease;
+  }
+  .name-entry-overlay.active { display: flex; }
+  .name-entry-card {
+    background: var(--bg);
+    padding: 36px 28px 28px;
+    border-radius: 28px;
+    text-align: center;
+    width: min(86vw, 340px);
+    animation: rise 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .name-entry-emoji {
+    font-size: 44px;
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+  .name-entry-title {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .name-entry-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .name-entry-card input {
+    width: 100%;
+    margin-top: 18px;
+    padding: 12px 16px;
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    font-size: 15px;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+    text-align: center;
+  }
+  .name-entry-card input:focus { border-color: var(--accent); }
+  .name-entry-emoji-label {
+    margin-top: 18px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+  }
+  .name-entry-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .name-entry-emoji-pick {
+    aspect-ratio: 1;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    border-radius: 12px;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .name-entry-emoji-pick:hover { background: rgba(28, 27, 26, 0.04); }
+  .name-entry-emoji-pick.selected {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+  .lb-emoji {
+    display: inline-block;
+    margin-right: 6px;
+    line-height: 1;
+  }
+  .name-entry-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .name-entry-actions .btn { flex: 1; }
+  /* Tutorial overlay (same modal feel as win) */
+  .tutorial-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 27, 26, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 110;
+    animation: fadein 0.3s ease;
+  }
+  .tutorial-overlay.active { display: flex; }
+  .tutorial-card {
+    background: var(--bg);
+    padding: 36px 28px 28px;
+    border-radius: 28px;
+    text-align: center;
+    width: min(86vw, 360px);
+    position: relative;  /* anchor for the absolute-positioned version label */
+    animation: rise 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .tutorial-slide { display: none; }
+  .tutorial-slide.active { display: block; }
+  .tutorial-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    margin-top: 14px;
+  }
+  .tutorial-text {
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--muted);
+    text-align: center;
+  }
+  .tutorial-text strong { color: var(--ink); font-weight: 600; }
+  .tutorial-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 4px;
+  }
+  /* Mini board (tutorial visual) */
+  .t-board {
+    display: grid;
+    grid-template-columns: repeat(3, 24px);
+    grid-template-rows: repeat(3, 24px);
+    gap: 3px;
+    background: var(--board);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .t-cell {
+    background: var(--surface);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .t-piece {
+    width: 78%;
+    height: 78%;
+    border-radius: 50%;
+  }
+  .t-piece.black {
+    background: radial-gradient(circle at 32% 26%, #5b5853, #0E0D0B 80%);
+    box-shadow: inset -1px -1px 2px rgba(0,0,0,0.4);
+  }
+  .t-piece.white {
+    background: radial-gradient(circle at 32% 26%, #FFFFFF, #D4CFBE 80%);
+    box-shadow: inset -1px -1px 2px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.08);
+  }
+  .t-arrow {
+    font-size: 20px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  /* How-to row for slide 2 */
+  .t-howto {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-top: 6px;
+  }
+  .t-howto-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    padding: 10px 14px;
+    width: 100%;
+  }
+  .t-howto-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .t-howto-text {
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.4;
+    text-align: left;
+  }
+  .t-howto-text small { color: var(--muted); font-size: 12px; }
+  /* The big "pieces move in pairs" rule callout on slide 2 */
+  .t-rule {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--accent-soft);
+    border: 1.5px solid rgba(79, 70, 229, 0.25);
+    border-radius: 16px;
+    margin-bottom: 14px;
+  }
+  .t-rule-stones {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  .t-rule-stones .t-piece {
+    width: 28px;
+    height: 28px;
+  }
+  .t-rule-text {
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.4;
+    text-align: left;
+  }
+  .t-rule-text strong {
+    display: block;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .t-rule-text em {
+    font-style: normal;
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-underline-offset: 2px;
+    font-weight: 600;
+  }
+  .tutorial-progress {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 20px;
+  }
+  .tutorial-pdot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--line);
+    transition: background 0.2s, width 0.2s;
+  }
+  .tutorial-pdot.active {
+    background: var(--accent);
+    width: 18px;
+  }
+  .tutorial-version {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    opacity: 0.55;
+    user-select: none;
+    display: none;  /* only revealed on the first tutorial slide */
+  }
+  .tutorial-version.show-version { display: block; }
+  .tutorial-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .tutorial-actions .btn { flex: 1; }
+  /* Practice swipe path — three cells pulse in sequence to show direction. */
+  .cell.t-hint {
+    background: var(--accent-soft);
+  }
+  .cell.t-hint-1 { animation: pulseWave 1.6s ease-in-out infinite 0s; }
+  .cell.t-hint-2 { animation: pulseWave 1.6s ease-in-out infinite 0.28s; }
+  .cell.t-hint-3 { animation: pulseWave 1.6s ease-in-out infinite 0.56s; }
+  @keyframes pulseWave {
+    0%, 60%, 100% {
+      background: var(--accent-soft);
+      box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+    }
+    25% {
+      background: rgba(79, 70, 229, 0.32);
+      box-shadow: 0 0 0 6px rgba(79, 70, 229, 0.18);
+    }
+  }
+  /* Practice swipe-guide animation: SVG over the board that draws the exact
+     swipe path the player should follow, with a glowing dot tracing it on a
+     loop so they can mimic it with their finger. */
+  .practice-guide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .practice-guide.active { opacity: 1; }
+  .practice-guide .pg-path {
+    fill: none;
+    stroke: rgba(79, 70, 229, 0.45);
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 4 14;
+    animation: pgDash 1.4s linear infinite;
+  }
+  .practice-guide .pg-finger {
+    fill: #4F46E5;
+    filter: drop-shadow(0 0 12px rgba(79, 70, 229, 0.7));
+  }
+  @keyframes pgDash {
+    to { stroke-dashoffset: -36; }
+  }
+  /* Practice hint banner */
+  .practice-hint {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 90px;
+    background: var(--ink);
+    color: var(--bg);
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 50;
+    display: none;
+    animation: rise 0.3s ease;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+  }
+  .practice-hint.active { display: block; }
+  .practice-hint .step-num {
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 6px;
+  }
+  @keyframes fadein {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ─── Boot splash (in-app, brief) ──────────────────────────────────── */
+  .boot-splash {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    transition: opacity 0.55s ease;
+    pointer-events: none;
+  }
+  .boot-splash.gone { opacity: 0; }
+  .boot-splash.removed { display: none; }
+  .boot-glow {
+    position: absolute;
+    width: 60%;
+    height: 60%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124, 110, 240, 0.16) 0%, rgba(79, 70, 229, 0) 70%);
+    pointer-events: none;
+  }
+  .boot-stones {
+    display: flex;
+    gap: 22px;
+    z-index: 1;
+  }
+  .boot-stone {
+    width: 78px;
+    height: 78px;
+    border-radius: 50%;
+    opacity: 0;
+    transform: scale(0.6) translateY(8px);
+    animation: bootPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  .boot-stone.black {
+    background: radial-gradient(circle at 32% 26%, #5b5853 0%, #2B2926 48%, #0E0D0B 100%);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3), inset -3px -4px 8px rgba(0, 0, 0, 0.4);
+    animation-delay: 0.05s;
+  }
+  .boot-stone.white {
+    background: radial-gradient(circle at 32% 26%, #FFFFFF 0%, #F2EFE6 55%, #D4CFBE 100%);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14), inset -3px -4px 8px rgba(0, 0, 0, 0.08);
+    animation-delay: 0.12s;
+  }
+  .boot-title {
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+    margin-top: 28px;
+    z-index: 1;
+    opacity: 0;
+    animation: bootFade 0.5s ease 0.22s forwards;
+  }
+  @keyframes bootPop {
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes bootFade {
+    to { opacity: 1; }
+  }
+
+  /* ─── Swipe trail (visual feedback for swipe gesture) ──────────────── */
+  .swipe-trail-dot {
+    position: fixed;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(79, 70, 229, 0.55);
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.45), 0 0 2px rgba(79, 70, 229, 0.7);
+    pointer-events: none;
+    z-index: 220;
+    transform: translate(-50%, -50%) scale(1);
+    transition: opacity 0.45s ease-out, transform 0.45s ease-out;
+  }
+  .swipe-trail-dot.fade {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+
+  /* ─── Piece slide animation ────────────────────────────────────────── */
+  .piece.sliding {
+    transition: transform 0.22s cubic-bezier(0.32, 0.7, 0.4, 1);
+    z-index: 5;
+  }
+
+  /* ─── Final congratulations screen ────────────────────────────────── */
+  .congrats-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 27, 26, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 150;
+    overflow: hidden;
+    animation: fadein 0.3s ease;
+  }
+  .congrats-overlay.active { display: flex; }
+  .congrats-card {
+    background: var(--bg);
+    padding: 40px 30px 26px;
+    border-radius: 28px;
+    text-align: center;
+    width: min(86vw, 380px);
+    animation: rise 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    z-index: 1;
+  }
+  .congrats-title {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--accent) 0%, #7c6ef0 70%, #b8aeff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .congrats-sub {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .congrats-table {
+    width: 100%;
+    margin-top: 22px;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+  .congrats-table th {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 6px 12px;
+    text-align: left;
+  }
+  .congrats-table th:last-child { text-align: right; }
+  .congrats-table td {
+    font-size: 14px;
+    padding: 9px 12px;
+    border-top: 1px solid var(--line);
+    color: var(--ink);
+    text-align: left;
+  }
+  .congrats-table td:last-child { text-align: right; font-weight: 600; }
+  .congrats-table tfoot td {
+    font-weight: 700;
+    font-size: 16px;
+    border-top: 2px solid var(--ink);
+  }
+  .congrats-actions { margin-top: 22px; }
+  .congrats-actions .btn { width: 100%; }
+
+  /* Confetti pieces */
+  .confetti {
+    position: absolute;
+    top: -24px;
+    width: 8px;
+    height: 14px;
+    opacity: 0;
+    animation: confetti-fall 3s cubic-bezier(0.3, 0.4, 0.7, 1) forwards;
+    z-index: 0;
+  }
+  .confetti.circle { border-radius: 50%; width: 9px; height: 9px; }
+  .confetti.square { border-radius: 2px; }
+  .confetti.rect   { border-radius: 1px; width: 6px; height: 16px; }
+  @keyframes confetti-fall {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+    10%  { opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="boot-splash" id="bootSplash">
+    <div class="boot-glow"></div>
+    <div class="boot-stones">
+      <div class="boot-stone black"></div>
+      <div class="boot-stone white"></div>
+    </div>
+    <div class="boot-title">Lumin Chess</div>
+  </div>
+  <button class="help-btn" id="helpBtn" aria-label="How to play">?</button>
+  <button class="trophy-btn" id="trophyBtn" aria-label="Leaderboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M7 5h10v5.5a5 5 0 0 1-10 0z"/>
+      <path d="M7 6.5H4v2a3 3 0 0 0 3 3"/>
+      <path d="M17 6.5h3v2a3 3 0 0 1-3 3"/>
+      <line x1="9" y1="18.5" x2="15" y2="18.5"/>
+      <line x1="12" y1="15.5" x2="12" y2="18.5"/>
+    </svg>
+  </button>
+  <div class="header">
+    <div class="title">Lumin Chess</div>
+    <div class="level" id="levelLabel">Level 1 — Swap the rows</div>
+    <div class="stats">
+      <div>
+        <div class="stat-label">Moves</div>
+        <div class="stat-value" id="moveCount">0</div>
+      </div>
+      <div>
+        <div class="stat-label">Time</div>
+        <div class="stat-value" id="timeCount">0:00</div>
+      </div>
+      <div>
+        <div class="stat-label">Best</div>
+        <div class="stat-value" id="bestCount">—</div>
+      </div>
+    </div>
+    <div class="level-selector" id="levelSelector"></div>
+  </div>
+
+  <div class="stage">
+    <div class="board" id="board">
+      <svg class="practice-guide" id="practiceGuide" preserveAspectRatio="none" aria-hidden="true">
+        <path class="pg-path" id="practiceGuidePath"/>
+        <circle class="pg-finger" id="practiceGuideFinger" r="14">
+          <animateMotion id="practiceGuideMotion" dur="2.2s" repeatCount="indefinite" rotate="auto" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.4 1">
+            <mpath href="#practiceGuidePath"/>
+          </animateMotion>
+        </circle>
+      </svg>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn secondary" id="undoBtn">Undo</button>
+    <button class="btn secondary" id="resetBtn">Reset</button>
+  </div>
+
+  <div class="practice-hint" id="practiceHint"></div>
+
+  <div class="tutorial-overlay" id="tutorialOverlay">
+    <div class="tutorial-card">
+      <div class="tutorial-slide active" data-slide="1">
+        <div class="tutorial-visual">
+          <div class="t-board" aria-hidden="true">
+            <div class="t-cell"><div class="t-piece black"></div></div>
+            <div class="t-cell"><div class="t-piece black"></div></div>
+            <div class="t-cell"><div class="t-piece black"></div></div>
+            <div class="t-cell"></div>
+            <div class="t-cell"></div>
+            <div class="t-cell"></div>
+            <div class="t-cell"><div class="t-piece white"></div></div>
+            <div class="t-cell"><div class="t-piece white"></div></div>
+            <div class="t-cell"><div class="t-piece white"></div></div>
+          </div>
+          <div class="t-arrow">→</div>
+          <div class="t-board" aria-hidden="true">
+            <div class="t-cell"><div class="t-piece white"></div></div>
+            <div class="t-cell"><div class="t-piece white"></div></div>
+            <div class="t-cell"><div class="t-piece white"></div></div>
+            <div class="t-cell"></div>
+            <div class="t-cell"></div>
+            <div class="t-cell"></div>
+            <div class="t-cell"><div class="t-piece black"></div></div>
+            <div class="t-cell"><div class="t-piece black"></div></div>
+            <div class="t-cell"><div class="t-piece black"></div></div>
+          </div>
+        </div>
+        <div class="tutorial-title">Welcome to Lumin Chess</div>
+        <div class="tutorial-text">
+          Swap the pieces: every <strong>black</strong> should end where the <strong>whites</strong> started, and every <strong>white</strong> where the <strong>blacks</strong> were. Solve it in as few moves as you can.
+        </div>
+      </div>
+      <div class="tutorial-slide" data-slide="2">
+        <div class="t-rule">
+          <div class="t-rule-stones">
+            <div class="t-piece black"></div>
+            <div class="t-piece white"></div>
+          </div>
+          <div class="t-rule-text">
+            <strong>Pieces always move in pairs.</strong>
+            Pick two <em>adjacent</em> neighbors — never just one, never diagonal. The pair slides one cell in any direction together.
+          </div>
+        </div>
+        <div class="t-howto">
+          <div class="t-howto-row">
+            <div class="t-howto-icon">↗</div>
+            <div class="t-howto-text"><strong>Single-finger swipe</strong> traces over the pair you want to move. Straight along the pair if it slides along itself, or an <strong>L</strong> — over the pair, then turn in the slide direction — if it slides across.</div>
+          </div>
+          <div class="t-howto-row">
+            <div class="t-howto-icon">✌</div>
+            <div class="t-howto-text"><strong>Two-finger slide</strong> — place a finger on each piece of the pair, then drag both together. <small>Direct control — your fingers are the pair.</small></div>
+          </div>
+        </div>
+        <div class="tutorial-title" style="margin-top: 18px;">How to move</div>
+        <div class="tutorial-text">Either way works. We'll try both next.</div>
+      </div>
+      <div class="tutorial-slide" data-slide="3">
+        <div class="t-howto" style="margin-top: 4px;">
+          <div class="t-howto-row">
+            <div class="t-howto-icon">●</div>
+            <div class="t-howto-text"><strong>Goal markers</strong> in each cell show which color belongs there. They fade as you place pieces correctly.</div>
+          </div>
+          <div class="t-howto-row">
+            <div class="t-howto-icon">⏱</div>
+            <div class="t-howto-text"><strong>Time counts.</strong> The clock starts on your first move. On ties, faster runs rank higher on the leaderboard.</div>
+          </div>
+        </div>
+        <div class="tutorial-title" style="margin-top: 18px;">Good to know</div>
+        <div class="tutorial-text">Tap Try a move when you're ready.</div>
+      </div>
+      <div class="tutorial-progress">
+        <div class="tutorial-pdot active" data-dot="1"></div>
+        <div class="tutorial-pdot" data-dot="2"></div>
+        <div class="tutorial-pdot" data-dot="3"></div>
+      </div>
+      <div class="tutorial-version" id="tutorialVersion">v1.0</div>
+      <div class="tutorial-actions">
+        <button class="btn secondary" id="tutorialSkipBtn">Skip</button>
+        <button class="btn" id="tutorialNextBtn">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="congrats-overlay" id="congratsOverlay">
+    <div class="congrats-card">
+      <div class="congrats-title">Congratulations</div>
+      <div class="congrats-sub">You've solved every level.</div>
+      <table class="congrats-table">
+        <thead>
+          <tr><th>Level</th><th>Best</th></tr>
+        </thead>
+        <tbody id="congratsTbody"></tbody>
+        <tfoot>
+          <tr><td>Total</td><td id="congratsTotal">0</td></tr>
+        </tfoot>
+      </table>
+      <div class="congrats-actions">
+        <button class="btn" id="congratsReplayBtn">Play again</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="win-overlay" id="winOverlay">
+    <div class="win-card">
+      <div class="win-title">Solved</div>
+      <div class="win-sub" id="winSub">Beautifully done.</div>
+      <div class="win-stats">
+        <div class="win-stat">Moves<strong id="winMoves">0</strong></div>
+        <div class="win-stat">Time<strong id="winTime">—</strong></div>
+      </div>
+      <div class="win-actions">
+        <button class="btn" id="winNextBtn">Next level</button>
+        <button class="btn secondary" id="winReplayBtn">Play again</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="leaderboard-overlay" id="leaderboardOverlay">
+    <div class="leaderboard-card">
+      <div class="leaderboard-title">Leaderboard</div>
+      <div class="leaderboard-sub">Top 100 fewest moves. Ties broken by faster solve time.</div>
+      <div class="leaderboard-tabs" id="leaderboardTabs"></div>
+      <div class="leaderboard-list" id="leaderboardList"></div>
+      <div class="leaderboard-actions">
+        <button class="btn" id="leaderboardCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="name-entry-overlay" id="nameEntryOverlay">
+    <div class="name-entry-card">
+      <div class="name-entry-emoji" id="nameEntryEmojiPreview">🏆</div>
+      <div class="name-entry-title">On the board!</div>
+      <div class="name-entry-sub" id="nameEntrySub"></div>
+      <input type="text" id="nameEntryInput" placeholder="Your name" maxlength="20" autocomplete="off" spellcheck="false"/>
+      <div class="name-entry-emoji-label">Pick your emoji</div>
+      <div class="name-entry-emoji-grid" id="nameEntryEmojiGrid"></div>
+      <div class="name-entry-actions">
+        <button class="btn secondary" id="nameEntrySkipBtn">Skip</button>
+        <button class="btn" id="nameEntrySaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+ * Lumin Chess — a sliding-pair puzzle game.
+ * Copyright (C) 2026  Peter Lyu / Lumin Industries
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+(function () {
+  'use strict';
+
+  // ─── App version ─────────────────────────────────────────────────────────
+  // Bumped automatically by scripts/deploy-ftp.py on each Bluehost deploy.
+  // The deploy script does a literal regex replace, so don't rename or reformat
+  // this declaration without updating the script.
+  var APP_VERSION = 'v1.12';
+
+  // ─── Levels ──────────────────────────────────────────────────────────────
+  // Ten levels: 3 originals + 7 from levels.json (BFS-verified pars). Sorted by
+  // minimum-move count ascending. Tie-breaking uses the puzzle's original rank
+  // order. The last level (Final field) ships without a verified par because
+  // its BFS state space exceeded the solver budget — it has no threshold gate.
+  // Cell codes: 'B' black, 'W' white, 'G' gray (stays put), 'X' blocked, null empty.
+  var LEVELS = [
+    {
+      id: 1,
+      name: 'Swap the rows',
+      optimum: 14,
+      rows: 3, cols: 3,
+      init: [
+        ['B', 'B', 'B'],
+        [null, null, null],
+        ['W', 'W', 'W']
+      ],
+      goal: [
+        ['W', 'W', 'W'],
+        [null, null, null],
+        ['B', 'B', 'B']
+      ]
+    },
+    {
+      id: 2,
+      name: 'Hollow square',
+      optimum: 24,
+      rows: 4, cols: 4,
+      init: [
+        ['B', 'B', 'B', 'B'],
+        ['B', null, null, 'B'],
+        ['W', null, null, 'W'],
+        ['W', 'W', 'W', 'W']
+      ],
+      goal: [
+        ['W', 'W', 'W', 'W'],
+        ['W', null, null, 'W'],
+        ['B', null, null, 'B'],
+        ['B', 'B', 'B', 'B']
+      ]
+    },
+    {
+      id: 3,
+      name: 'Single file',
+      optimum: 26,
+      rows: 3, cols: 5,
+      init: [
+        ['B', 'B', 'B', 'B', 'B'],
+        ['B', null, null, null, 'W'],
+        ['W', 'W', 'W', 'W', 'W']
+      ],
+      goal: [
+        ['W', 'W', 'W', 'W', 'W'],
+        ['W', null, null, null, 'B'],
+        ['B', 'B', 'B', 'B', 'B']
+      ]
+    },
+    {
+      id: 4,
+      name: 'Twin grays',
+      optimum: 26,
+      rows: 3, cols: 4,
+      init: [
+        ['B', 'B', 'B', 'B'],
+        ['G', null, null, 'G'],
+        ['W', 'W', 'W', 'W']
+      ],
+      goal: [
+        ['W', 'W', 'W', 'W'],
+        ['G', null, null, 'G'],
+        ['B', 'B', 'B', 'B']
+      ]
+    },
+    {
+      id: 5,
+      name: 'Narrow tower',
+      optimum: 32,
+      rows: 5, cols: 3,
+      init: [
+        ['B', 'B', 'B'],
+        ['B', 'B', 'B'],
+        [null, null, null],
+        ['W', 'W', 'W'],
+        ['W', 'W', 'W']
+      ],
+      goal: [
+        ['W', 'W', 'W'],
+        ['W', 'W', 'W'],
+        [null, null, null],
+        ['B', 'B', 'B'],
+        ['B', 'B', 'B']
+      ]
+    },
+    {
+      id: 6,
+      name: 'Bottleneck',
+      optimum: 34,
+      rows: 3, cols: 5,
+      init: [
+        ['B', 'B', 'B', 'B', 'B'],
+        ['X', null, null, null, 'X'],
+        ['W', 'W', 'W', 'W', 'W']
+      ],
+      goal: [
+        ['W', 'W', 'W', 'W', 'W'],
+        ['X', null, null, null, 'X'],
+        ['B', 'B', 'B', 'B', 'B']
+      ]
+    },
+    {
+      id: 7,
+      name: 'Crosshatch',
+      optimum: 42,
+      rows: 5, cols: 5,
+      init: [
+        ['B', 'B', null, 'B', 'B'],
+        ['G', 'X', 'G', 'X', 'G'],
+        [null, 'G', null, 'G', null],
+        ['G', 'X', 'G', 'X', 'G'],
+        ['W', 'W', null, 'W', 'W']
+      ],
+      goal: [
+        ['W', 'W', null, 'W', 'W'],
+        ['G', 'X', 'G', 'X', 'G'],
+        [null, 'G', null, 'G', null],
+        ['G', 'X', 'G', 'X', 'G'],
+        ['B', 'B', null, 'B', 'B']
+      ]
+    },
+    {
+      id: 8,
+      name: 'The arena',
+      optimum: 44,
+      rows: 5, cols: 5,
+      init: [
+        ['X', 'B', 'B', 'B', 'X'],
+        ['B', 'B', 'B', 'B', 'B'],
+        ['X', null, null, null, 'X'],
+        ['W', 'W', 'W', 'W', 'W'],
+        ['X', 'W', 'W', 'W', 'X']
+      ],
+      goal: [
+        ['X', 'W', 'W', 'W', 'X'],
+        ['W', 'W', 'W', 'W', 'W'],
+        ['X', null, null, null, 'X'],
+        ['B', 'B', 'B', 'B', 'B'],
+        ['X', 'B', 'B', 'B', 'X']
+      ]
+    },
+    {
+      id: 9,
+      // The grays can finish at any 2 of 4 middle-row cells — custom isGoal.
+      name: 'Mind the grays',
+      optimum: 49,
+      rows: 5, cols: 4,
+      init: [
+        ['B', 'B', 'B', 'B'],
+        ['B', 'B', 'B', 'B'],
+        ['G', null, null, 'G'],
+        ['W', 'W', 'W', 'W'],
+        ['W', 'W', 'W', 'W']
+      ],
+      goalMarkers: [
+        ['W', 'W', 'W', 'W'],
+        ['W', 'W', 'W', 'W'],
+        [null, null, null, null],
+        ['B', 'B', 'B', 'B'],
+        ['B', 'B', 'B', 'B']
+      ],
+      isGoal: function (grid) {
+        for (var r = 0; r < 2; r++) for (var c = 0; c < 4; c++) {
+          if (grid[r][c] !== 'W') return false;
+        }
+        for (var r = 3; r < 5; r++) for (var c = 0; c < 4; c++) {
+          if (grid[r][c] !== 'B') return false;
+        }
+        var g = 0;
+        for (var c = 0; c < 4; c++) {
+          var v = grid[2][c];
+          if (v === 'G') g++;
+          else if (v !== null) return false;
+        }
+        return g === 2;
+      }
+    },
+    {
+      id: 10,
+      // Last level — BFS skipped this one (state space too large), so par is
+      // unknown. UI shows "solve to clear" instead of a threshold.
+      name: 'Final field',
+      optimum: null,
+      rows: 5, cols: 5,
+      init: [
+        ['B', 'B', 'B', 'B', 'B'],
+        ['B', 'B', 'B', 'B', 'B'],
+        [null, 'G', null, 'G', null],
+        ['W', 'W', 'W', 'W', 'W'],
+        ['W', 'W', 'W', 'W', 'W']
+      ],
+      goal: [
+        ['W', 'W', 'W', 'W', 'W'],
+        ['W', 'W', 'W', 'W', 'W'],
+        [null, 'G', null, 'G', null],
+        ['B', 'B', 'B', 'B', 'B'],
+        ['B', 'B', 'B', 'B', 'B']
+      ]
+    }
+  ];
+
+  LEVELS.forEach(function (lv) {
+    if (!lv.goalMarkers) lv.goalMarkers = lv.goal;
+  });
+
+  function isPiece(v) { return v === 'B' || v === 'W' || v === 'G'; }
+
+  // Map a stable lv.id (used as the leaderboard storage key) to the level's
+  // 1-based display number (its current position in the LEVELS array). This
+  // lets us reorder/insert levels without renaming existing IDs — leaderboard
+  // data keyed by lv.id is preserved, while displayed "Level N" stays clean.
+  function levelDisplayNumber(levelId) {
+    for (var i = 0; i < LEVELS.length; i++) {
+      if (LEVELS[i].id === levelId) return i + 1;
+    }
+    return levelId;  // fallback for stray ids
+  }
+
+  var DIRS = {
+    up:    { dr: -1, dc:  0, label: '↑' },
+    down:  { dr:  1, dc:  0, label: '↓' },
+    left:  { dr:  0, dc: -1, label: '←' },
+    right: { dr:  0, dc:  1, label: '→' }
+  };
+
+  // ─── State ──────────────────────────────────────────────────────────────
+  var currentLevelIdx = 0;
+  var level, ROWS, COLS;
+  var grid, selected, moveCount, history;
+  var best = null;
+  // Starts at the FIRST move of a level, captured when win fires. null until
+  // the player makes a move (so just inspecting the level doesn't tick).
+  var levelStartTime = null;
+
+  function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function $(id) { return document.getElementById(id); }
+  function clone(g) { return g.map(function (r) { return r.slice(); }); }
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ─── Leaderboard ────────────────────────────────────────────────────────
+  // Top 100 per level. Reads/writes localStorage immediately for offline use,
+  // and (when running on a web host with leaderboard.php) syncs with the server
+  // so the leaderboard is shared across all visitors. The Android APK has no
+  // server reachable — the .catch falls through to localStorage cleanly.
+  // Ties on `moves` are broken by `submitted` (earlier timestamp ranks higher).
+  var LEADERBOARD_MAX = 100;
+  var LEADERBOARD_NAME_MAX = 20;
+  // Absolute URL so Capacitor (Android + future iOS) hits the live Bluehost
+  // backend — the apps load from capacitor://localhost or https://localhost,
+  // and relative paths would resolve to non-existent endpoints. CORS headers
+  // on the PHP side allow the cross-origin fetch.
+  var LEADERBOARD_API = 'https://100fold.ai/leaderboard.php';
+  var PENDING_KEY = 'lumin-chess-pending-submissions';
+  var PENDING_MAX = 50;
+  // Avatar emojis players pick when claiming a leaderboard slot. All chosen as
+  // single Unicode codepoints (no VS-16 variation selector) so client and
+  // server agree byte-for-byte on the allowlist check.
+  var EMOJI_LIST = [
+    '🏆', '🎯', '🚀', '⚡', '🔥', '💎',
+    '🌈', '✨', '🍀', '🌙', '⭐', '💫',
+    '🐱', '🐶', '🦊', '🐼', '🦁', '🐸',
+    '🐧', '🦄', '🐙', '🦋', '🌸', '🐢'
+  ];
+  var DEFAULT_EMOJI = EMOJI_LIST[0];
+
+  function sortLeaderboardEntries(entries) {
+    // Tiebreak order: moves asc → lapseMs asc → submitted asc.
+    // Treat missing fields as 0 so legacy entries stay near the top of their tie group.
+    entries.sort(function (a, b) {
+      return (a.moves - b.moves) ||
+             (((a && a.lapseMs) || 0) - ((b && b.lapseMs) || 0)) ||
+             (((a && a.submitted) || 0) - ((b && b.submitted) || 0));
+    });
+  }
+
+  function formatLapse(ms) {
+    if (!ms || ms < 0) return '—';
+    var totalSec = Math.floor(ms / 1000);
+    var m = Math.floor(totalSec / 60);
+    var s = totalSec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function getLeaderboard(levelId) {
+    var raw = safeGet('lumin-chess-leaderboard-' + levelId);
+    if (!raw) return [];
+    try {
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  }
+  function setLeaderboard(levelId, entries) {
+    safeSet('lumin-chess-leaderboard-' + levelId, JSON.stringify(entries));
+  }
+  // Returns the 1-based rank a (moves, lapseMs) score would earn, or null if outside the top.
+  // Tiebreak: same moves → strictly faster lapse → ranks above. Equal lapse → new entry ranks
+  // after existing one (whoever set it first ranks higher).
+  function leaderboardRank(levelId, moves, lapseMs) {
+    lapseMs = lapseMs || 0;
+    var entries = getLeaderboard(levelId);
+    var rank = 1;
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      if (moves < e.moves) break;                                 // strictly fewer moves → above
+      if (moves === e.moves && lapseMs < (e.lapseMs || 0)) break; // tied moves, strictly faster → above
+      rank++;
+    }
+    return rank <= LEADERBOARD_MAX ? rank : null;
+  }
+
+  // Replace the local cache for every level with whatever the server returned.
+  // The server is the authority on the web — a bucket missing from the response
+  // means that level has zero entries, so we explicitly wipe local cache for it.
+  // Otherwise a stale entry from a prior session (or a session before a
+  // leaderboard reset) would linger forever in the player's localStorage and
+  // appear in the leaderboard view.
+  function applyServerLeaderboard(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+    LEVELS.forEach(function (lv) {
+      var arr = data[String(lv.id)];
+      safeSet('lumin-chess-leaderboard-' + lv.id, JSON.stringify(Array.isArray(arr) ? arr : []));
+    });
+  }
+
+  // ─ Pending-submission queue ──
+  // Offline-friendly sync. If a POST fails (no network / server down / transient
+  // CORS hiccup), park the entry in localStorage and retry on the next
+  // successful GET. Mobile devices that play offline get their scores synced
+  // once they reconnect — without this, the entry would be lost when the user
+  // closes the app or the local cache gets refreshed from the server.
+  function loadPendingSubmissions() {
+    var raw = safeGet(PENDING_KEY);
+    if (!raw) return [];
+    try {
+      var parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  }
+  function savePendingSubmissions(list) {
+    safeSet(PENDING_KEY, JSON.stringify(list));
+  }
+  function queuePendingSubmission(entry) {
+    var pending = loadPendingSubmissions();
+    pending.push(entry);
+    if (pending.length > PENDING_MAX) pending = pending.slice(-PENDING_MAX);
+    savePendingSubmissions(pending);
+  }
+  function flushPendingSubmissions() {
+    var pending = loadPendingSubmissions();
+    if (pending.length === 0 || typeof fetch !== 'function') return Promise.resolve();
+    var remaining = pending.slice();
+    function next() {
+      if (remaining.length === 0) return Promise.resolve();
+      var entry = remaining[0];
+      return fetch(LEADERBOARD_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+      }).then(function (r) {
+        if (!r.ok) throw new Error('http ' + r.status);
+        remaining.shift();
+        return next();
+      });
+    }
+    return next()
+      .then(function () { savePendingSubmissions([]); })
+      .catch(function () { savePendingSubmissions(remaining); /* keep un-submitted entries */ });
+  }
+
+  function fetchServerLeaderboard() {
+    if (typeof fetch !== 'function') return Promise.reject(new Error('no-fetch'));
+    return fetch(LEADERBOARD_API, { method: 'GET', cache: 'no-store' })
+      .then(function (r) {
+        // PHP not deployed → 404. Static server returning .php as text → JSON parse fails below.
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        applyServerLeaderboard(data);
+        // Online! Drain any submissions that got queued while offline, then
+        // re-apply the server state so the leaderboard view shows what landed.
+        flushPendingSubmissions()
+          .then(function () { return fetch(LEADERBOARD_API, { method: 'GET', cache: 'no-store' }); })
+          .then(function (r) { if (r && r.ok) return r.json(); })
+          .then(function (refreshed) { if (refreshed) applyServerLeaderboard(refreshed); })
+          .catch(function () { /* offline again — try later */ });
+        return data;
+      });
+  }
+
+  function postServerLeaderboardEntry(levelId, name, moves, emoji, lapseMs) {
+    if (typeof fetch !== 'function') return Promise.reject(new Error('no-fetch'));
+    var entry = { level: levelId, name: name, moves: moves, emoji: emoji, lapseMs: lapseMs };
+    return fetch(LEADERBOARD_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    })
+      .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(function (data) { applyServerLeaderboard(data); return data; })
+      .catch(function (err) {
+        // Offline, transient server error, etc. — park for retry on next online tick.
+        queuePendingSubmission(entry);
+        throw err;
+      });
+  }
+
+  function insertLeaderboardEntry(levelId, name, moves, emoji, lapseMs) {
+    if (!emoji || EMOJI_LIST.indexOf(emoji) === -1) emoji = DEFAULT_EMOJI;
+    if (typeof lapseMs !== 'number' || lapseMs < 0) lapseMs = 0;
+    // Local insertion first so the UI updates immediately even if offline.
+    var entries = getLeaderboard(levelId);
+    var now = Date.now();
+    entries.push({
+      name: name,
+      emoji: emoji,
+      moves: moves,
+      lapseMs: lapseMs,
+      date: new Date().toISOString().slice(0, 10),
+      submitted: now
+    });
+    sortLeaderboardEntries(entries);
+    if (entries.length > LEADERBOARD_MAX) entries.length = LEADERBOARD_MAX;
+    setLeaderboard(levelId, entries);
+    // Test mode (?unlock=all): keep entries local-only so test plays don't end up on the live server.
+    if (TEST_MODE) return;
+    // Fire-and-forget server sync; rewrites local cache on success.
+    postServerLeaderboardEntry(levelId, name, moves, emoji, lapseMs)
+      .then(function () {
+        // If the leaderboard view is open on this level, refresh after server truth.
+        if (currentLeaderboardTab === levelId && $('leaderboardOverlay').classList.contains('active')) {
+          renderLeaderboardList(levelId);
+        }
+      })
+      .catch(function () { /* offline or no server — local entry stays */ });
+  }
+
+  // ─── Level lifecycle ────────────────────────────────────────────────────
+  function loadLevel(idx) {
+    var clamped = Math.max(0, Math.min(LEVELS.length - 1, idx));
+    // Never let the user open a level that isn't unlocked yet.
+    clamped = Math.min(clamped, getMaxUnlocked());
+    currentLevelIdx = clamped;
+    level = LEVELS[currentLevelIdx];
+    ROWS = level.rows;
+    COLS = level.cols;
+    grid = clone(level.init);
+    selected = [];
+    moveCount = 0;
+    history = [];
+    levelStartTime = null;
+    stopTimerTicking();
+    $('timeCount').textContent = '0:00';
+    best = safeGet('lumin-chess-best-' + level.id);
+    safeSet('lumin-chess-level', String(currentLevelIdx));
+    var label = 'Level ' + (currentLevelIdx + 1) + ' — ' + level.name;
+    if (level.optimum) {
+      var isLastLevel = currentLevelIdx === LEVELS.length - 1;
+      label += '  ·  ' + (isLastLevel ? 'clear in ≤ ' : 'unlock in ≤ ') + passingThreshold(level);
+    } else {
+      // Final level w/o verified par — just say "solve to clear".
+      label += '  ·  solve to clear';
+    }
+    $('levelLabel').textContent = label;
+    $('winOverlay').classList.remove('active');
+    renderLevelSelector();
+    resizeBoard();
+    updateStats();
+    render();
+  }
+
+  // Test mode: ?unlock=all opens every level (used for local test builds + screenshots).
+  // Also skips POSTs to the live leaderboard so test plays don't pollute it.
+  var TEST_MODE = (function () {
+    try { return location.search.indexOf('unlock=all') !== -1; }
+    catch (e) { return false; }
+  })();
+
+  // Secret leaderboard viewer: ?lb=peek-all shows every level's leaderboard
+  // tab in the overlay (bypasses the "unlocked + next" gating) and auto-opens
+  // the overlay on load. Doesn't change game state or leaderboard submissions.
+  var ADMIN_LB_VIEW = (function () {
+    try { return location.search.indexOf('lb=peek-all') !== -1; }
+    catch (e) { return false; }
+  })();
+
+  // Players must beat each level within 50% of the optimal (≤ ⌊par × 1.5⌋)
+  // before the next level unlocks. Levels with optimum=null (e.g. the BFS-skipped
+  // last level) have no threshold — any solve clears them.
+  function passingThreshold(lv) {
+    if (lv.optimum == null) return null;
+    return Math.floor(lv.optimum * 1.5);
+  }
+  function isLevelCleared(idx) {
+    var lv = LEVELS[idx];
+    var bs = safeGet('lumin-chess-best-' + lv.id);
+    if (bs == null) return false;
+    var threshold = passingThreshold(lv);
+    if (threshold == null) return true;  // no par → any solve counts
+    return parseInt(bs, 10) <= threshold;
+  }
+  function getMaxUnlocked() {
+    if (TEST_MODE) return LEVELS.length - 1;
+    var maxIdx = 0;
+    for (var i = 0; i < LEVELS.length - 1; i++) {
+      if (!isLevelCleared(i)) break;
+      maxIdx = i + 1;
+    }
+    return maxIdx;
+  }
+
+  function renderLevelSelector() {
+    var sel = $('levelSelector');
+    sel.innerHTML = '';
+    var maxUnlocked = getMaxUnlocked();
+    // Render unlocked levels + ONE locked level (the next one). Everything
+    // beyond that stays hidden so players don't see how many levels remain.
+    var renderUpTo = Math.min(LEVELS.length - 1, maxUnlocked + 1);
+    LEVELS.forEach(function (lv, i) {
+      if (i > renderUpTo) return;
+      var b = document.createElement('button');
+      var locked = i > maxUnlocked;
+      b.className = 'level-dot' + (i === currentLevelIdx ? ' active' : '') + (locked ? ' locked' : '');
+      if (locked) {
+        b.innerHTML = '<svg class="lock-icon" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="5.5" width="7" height="5" rx="1"/><path d="M4 5.5V3.8a2 2 0 0 1 4 0V5.5"/></svg>';
+        b.disabled = true;
+        b.title = 'Locked — solve previous levels to unlock';
+      } else {
+        // Display the array position (1-based) — keeps numbering consecutive
+        // even if new levels are inserted with non-sequential stable ids.
+        b.textContent = String(i + 1);
+      }
+      b.addEventListener('click', function () {
+        if (!locked) loadLevel(i);
+      });
+      sel.appendChild(b);
+    });
+  }
+
+  function resizeBoard() {
+    var board = $('board');
+    var padding = 8;
+    var gap = 8;
+    // Tablet-class viewports get bigger caps so the board doesn't drown in whitespace.
+    var isTablet = window.innerWidth >= 700;
+    var capW = isTablet ? 580 : 400;
+    var capCell = isTablet ? 170 : 100;
+    var maxW = Math.min(window.innerWidth * 0.88, capW);
+    var maxH = window.innerHeight * 0.58;
+    var cellW = (maxW - padding * 2 - gap * (COLS - 1)) / COLS;
+    var cellH = (maxH - padding * 2 - gap * (ROWS - 1)) / ROWS;
+    var cellSize = Math.floor(Math.min(cellW, cellH, capCell));
+    var w = cellSize * COLS + padding * 2 + gap * (COLS - 1);
+    var h = cellSize * ROWS + padding * 2 + gap * (ROWS - 1);
+    board.style.width = w + 'px';
+    board.style.height = h + 'px';
+    board.style.gridTemplateColumns = 'repeat(' + COLS + ', 1fr)';
+    board.style.gridTemplateRows = 'repeat(' + ROWS + ', 1fr)';
+  }
+  window.addEventListener('resize', function () {
+    resizeBoard();
+    // Re-anchor the practice swipe guide to the new board dimensions.
+    if (typeof updatePracticeGuide === 'function') updatePracticeGuide();
+  });
+
+  function updateStats() {
+    $('moveCount').textContent = moveCount;
+    $('bestCount').textContent = best == null ? '—' : best;
+    // The time field is updated by the live ticker; show "0:00" before any moves.
+    if (levelStartTime == null) $('timeCount').textContent = '0:00';
+  }
+
+  // Live timer ticks while a level is in progress (between first move and win).
+  var timerInterval = null;
+  function startTimerTicking() {
+    if (timerInterval != null) return;
+    timerInterval = setInterval(function () {
+      if (levelStartTime != null) {
+        $('timeCount').textContent = formatLapse(Date.now() - levelStartTime);
+      }
+    }, 250);
+  }
+  function stopTimerTicking() {
+    if (timerInterval != null) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  // ─── Movement rules ─────────────────────────────────────────────────────
+  function isAdjacent(a, b) {
+    return Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
+  }
+  function inBounds(p) {
+    return p.r >= 0 && p.r < ROWS && p.c >= 0 && p.c < COLS;
+  }
+
+  function isValidMove(p1, p2, dir) {
+    if (!isAdjacent(p1, p2)) return false;
+    // Only B/W/G can move. Empty cells (null) and blocked cells ('X') can't be the source.
+    if (!isPiece(grid[p1.r][p1.c]) || !isPiece(grid[p2.r][p2.c])) return false;
+    var np1 = { r: p1.r + dir.dr, c: p1.c + dir.dc };
+    var np2 = { r: p2.r + dir.dr, c: p2.c + dir.dc };
+    if (!inBounds(np1) || !inBounds(np2)) return false;
+    var vacated = {};
+    vacated[p1.r + ',' + p1.c] = true;
+    vacated[p2.r + ',' + p2.c] = true;
+    var dests = [np1, np2];
+    for (var i = 0; i < dests.length; i++) {
+      var d = dests[i];
+      if (vacated[d.r + ',' + d.c]) continue;
+      // Destination must be empty (null). Anything else (piece OR blocked 'X') blocks the slide.
+      if (grid[d.r][d.c] !== null) return false;
+    }
+    return true;
+  }
+
+  function executeMove(p1, p2, dir) {
+    if (levelStartTime === null) {
+      levelStartTime = Date.now();
+      startTimerTicking();
+    }
+    history.push({ grid: clone(grid), moveCount: moveCount });
+    feedbackMoveSuccess();
+    animateSlide(p1, p2, dir, function () {
+      var a = grid[p1.r][p1.c];
+      var b = grid[p2.r][p2.c];
+      grid[p1.r][p1.c] = null;
+      grid[p2.r][p2.c] = null;
+      grid[p1.r + dir.dr][p1.c + dir.dc] = a;
+      grid[p2.r + dir.dr][p2.c + dir.dc] = b;
+      moveCount++;
+      selected = [];
+      updateStats();
+      render();
+      if (isWinState()) {
+        stopTimerTicking();
+        // Freeze the displayed time at the winning moment.
+        $('timeCount').textContent = formatLapse(Date.now() - levelStartTime);
+        setTimeout(showWin, 240);
+      }
+    });
+  }
+
+  function animateSlide(p1, p2, dir, done) {
+    var board = $('board');
+    var padding = 8;
+    var gap = 8;
+    var cellSize = (board.offsetWidth - padding * 2 - gap * (COLS - 1)) / COLS;
+    var dx = dir.dc * (cellSize + gap);
+    var dy = dir.dr * (cellSize + gap);
+
+    var cell1 = board.querySelector('.cell[data-r="' + p1.r + '"][data-c="' + p1.c + '"]');
+    var cell2 = board.querySelector('.cell[data-r="' + p2.r + '"][data-c="' + p2.c + '"]');
+    var e1 = cell1 ? cell1.querySelector('.piece') : null;
+    var e2 = cell2 ? cell2.querySelector('.piece') : null;
+
+    // Hide target arrows + selection ring during the slide so it reads cleanly.
+    var arrows = board.querySelectorAll('.target-icon');
+    for (var i = 0; i < arrows.length; i++) arrows[i].style.opacity = '0';
+    var targets = board.querySelectorAll('.cell.target');
+    for (var j = 0; j < targets.length; j++) targets[j].classList.remove('target');
+
+    if (!e1 || !e2) { done(); return; }
+
+    e1.classList.remove('selected');
+    e2.classList.remove('selected');
+    e1.classList.add('sliding');
+    e2.classList.add('sliding');
+
+    // Force reflow so the transition kicks in.
+    void e1.offsetWidth;
+
+    e1.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+    e2.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+
+    setTimeout(done, 230);
+  }
+
+  function isWinState() {
+    if (level.isGoal) return level.isGoal(grid);
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        if (grid[r][c] !== level.goal[r][c]) return false;
+      }
+    }
+    return true;
+  }
+
+  function showWin() {
+    // Capture previous best BEFORE updating, so the headline can compare against it.
+    var prev = best == null ? null : parseInt(best, 10);
+    if (prev === null || moveCount < prev) {
+      best = String(moveCount);
+      safeSet('lumin-chess-best-' + level.id, best);
+      updateStats();
+    }
+    // Lapse from the first move (null if no moves were made, which shouldn't happen at win).
+    var lapseMs = levelStartTime ? Math.max(0, Date.now() - levelStartTime) : 0;
+    // If this run lands in the top, prompt for name+emoji first.
+    var rank = leaderboardRank(level.id, moveCount, lapseMs);
+    if (rank !== null) {
+      promptNameEntry(level.id, moveCount, lapseMs, rank, function () { renderWinScreen(prev, lapseMs); });
+    } else {
+      renderWinScreen(prev, lapseMs);
+    }
+  }
+
+  function renderWinScreen(prev, lapseMs) {
+    $('winMoves').textContent = moveCount;
+    $('winTime').textContent = formatLapse(lapseMs);
+    var threshold = passingThreshold(level);
+    var passed = threshold == null ? true : moveCount <= threshold;
+
+    // Headline reflecting how this run compares to past bests.
+    var headline;
+    if (prev === null) headline = 'First solve.';
+    else if (moveCount < prev) headline = 'New personal best.';
+    else if (moveCount === prev) headline = 'Tied your best.';
+    else headline = 'Best so far: ' + prev + ' moves.';
+
+    // Append the unlock status line so the player knows where they stand.
+    var unlockLine;
+    if (passed) {
+      var hasNext = currentLevelIdx < LEVELS.length - 1;
+      unlockLine = hasNext
+        ? '<span class="win-unlock">Next level unlocked.</span>'
+        : '<span class="win-unlock">All levels cleared!</span>';
+    } else {
+      unlockLine = '<span class="win-locked">Beat in ≤ ' + threshold + ' moves to unlock next.</span>';
+    }
+    $('winSub').innerHTML = headline + '<br>' + unlockLine;
+
+    // Refresh selector — `getMaxUnlocked` reads from bests, so this happens automatically.
+    renderLevelSelector();
+
+    // Final congrats only when every level has been beaten within its threshold.
+    var isLast = currentLevelIdx === LEVELS.length - 1;
+    if (isLast && passed && allLevelsCleared()) {
+      setTimeout(showCongrats, 280);
+      return;
+    }
+    var hasNextLevel = currentLevelIdx < LEVELS.length - 1;
+    $('winNextBtn').style.display = (hasNextLevel && passed) ? '' : 'none';
+    $('winOverlay').classList.add('active');
+  }
+
+  // ─── Name entry + leaderboard view ──────────────────────────────────────
+  function buildEmojiGrid(currentEmoji) {
+    var grid = $('nameEntryEmojiGrid');
+    grid.innerHTML = '';
+    EMOJI_LIST.forEach(function (em) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'name-entry-emoji-pick' + (em === currentEmoji ? ' selected' : '');
+      b.textContent = em;
+      b.dataset.emoji = em;
+      b.addEventListener('click', function () {
+        var prev = grid.querySelector('.selected');
+        if (prev) prev.classList.remove('selected');
+        b.classList.add('selected');
+        $('nameEntryEmojiPreview').textContent = em;
+      });
+      grid.appendChild(b);
+    });
+  }
+
+  function promptNameEntry(levelId, moves, lapseMs, rank, onDone) {
+    var timeStr = formatLapse(lapseMs);
+    var sub = "You're #" + rank + ' on Level ' + levelDisplayNumber(levelId) + ' — ' +
+              moves + ' move' + (moves === 1 ? '' : 's') +
+              (timeStr === '—' ? '' : ' in ' + timeStr) + '.';
+    $('nameEntrySub').textContent = sub;
+    var input = $('nameEntryInput');
+    input.value = safeGet('lumin-chess-last-name') || '';
+    var lastEmoji = safeGet('lumin-chess-last-emoji');
+    if (!lastEmoji || EMOJI_LIST.indexOf(lastEmoji) === -1) lastEmoji = DEFAULT_EMOJI;
+    $('nameEntryEmojiPreview').textContent = lastEmoji;
+    buildEmojiGrid(lastEmoji);
+    $('nameEntryOverlay').classList.add('active');
+    // Focus after the entry animation so the keyboard pops at the right moment.
+    setTimeout(function () { try { input.focus(); input.select(); } catch (e) {} }, 120);
+
+    function cleanup() {
+      $('nameEntryOverlay').classList.remove('active');
+      $('nameEntrySaveBtn').removeEventListener('click', save);
+      $('nameEntrySkipBtn').removeEventListener('click', skip);
+      input.removeEventListener('keydown', onKey);
+      onDone();
+    }
+    function save() {
+      var name = input.value.trim().slice(0, 20);
+      if (!name) name = 'Anonymous';
+      var picked = $('nameEntryEmojiGrid').querySelector('.selected');
+      var emoji = picked ? picked.dataset.emoji : DEFAULT_EMOJI;
+      insertLeaderboardEntry(levelId, name, moves, emoji, lapseMs);
+      safeSet('lumin-chess-last-name', name);
+      safeSet('lumin-chess-last-emoji', emoji);
+      cleanup();
+    }
+    function skip() { cleanup(); }
+    function onKey(e) { if (e.key === 'Enter') save(); }
+
+    $('nameEntrySaveBtn').addEventListener('click', save);
+    $('nameEntrySkipBtn').addEventListener('click', skip);
+    input.addEventListener('keydown', onKey);
+  }
+
+  var currentLeaderboardTab = null;
+  function renderLeaderboardTabs() {
+    var host = $('leaderboardTabs');
+    host.innerHTML = '';
+    var maxUnlocked = getMaxUnlocked();
+    // Render tabs for unlocked levels + ONE locked level (the next one). Hide beyond.
+    // Admin peek mode (?lb=peek-all) shows every level regardless of unlock state.
+    var renderUpTo = ADMIN_LB_VIEW
+      ? LEVELS.length - 1
+      : Math.min(LEVELS.length - 1, maxUnlocked + 1);
+    LEVELS.forEach(function (lv, i) {
+      if (i > renderUpTo) return;
+      var locked = !ADMIN_LB_VIEW && i > maxUnlocked;
+      var b = document.createElement('button');
+      b.className = 'lb-tab' +
+        (lv.id === currentLeaderboardTab ? ' active' : '') +
+        (locked ? ' locked' : '');
+      b.dataset.lb = lv.id;
+      if (locked) {
+        // Same lock glyph as the in-game level selector dots — pill shows only the lock when locked.
+        b.innerHTML = '<svg class="lock-icon" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="5.5" width="7" height="5" rx="1"/><path d="M4 5.5V3.8a2 2 0 0 1 4 0V5.5"/></svg>';
+        b.disabled = true;
+        b.title = 'Locked — solve previous levels to unlock';
+      } else {
+        // Display the array position (1-based), not the stable lv.id.
+        b.textContent = String(i + 1);
+        b.addEventListener('click', function () { switchLeaderboardTab(lv.id); });
+      }
+      host.appendChild(b);
+    });
+  }
+  function renderLeaderboardList(levelId) {
+    var entries = getLeaderboard(levelId);
+    var host = $('leaderboardList');
+    if (entries.length === 0) {
+      host.innerHTML = '<div class="lb-empty">No scores yet on Level ' + levelDisplayNumber(levelId) + '.<br>Solve it to claim a spot.</div>';
+      return;
+    }
+    var rows = entries.map(function (e, i) {
+      var emoji = e.emoji ? '<span class="lb-emoji">' + escapeHtml(e.emoji) + '</span>' : '';
+      var time = formatLapse(e.lapseMs);
+      return '<tr><td>' + (i + 1) + '</td><td>' + emoji + escapeHtml(e.name) +
+             '</td><td class="lb-moves">' + e.moves +
+             '</td><td class="lb-time">' + time + '</td></tr>';
+    }).join('');
+    host.innerHTML =
+      '<table class="lb-table"><thead><tr><th>#</th><th>Name</th><th class="lb-moves">Moves</th><th class="lb-time">Time</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  }
+  function switchLeaderboardTab(levelId) {
+    currentLeaderboardTab = levelId;
+    renderLeaderboardTabs();
+    renderLeaderboardList(levelId);
+  }
+  function showLeaderboard() {
+    // Always open on the level the player is currently on (which is always unlocked).
+    var startId = (level && level.id) || (LEVELS[0] && LEVELS[0].id) || 1;
+    switchLeaderboardTab(startId);
+    // Reset scroll to top so the player sees rank #1 first.
+    var list = $('leaderboardList');
+    if (list) list.scrollTop = 0;
+    $('leaderboardOverlay').classList.add('active');
+    // Background refresh from server (web deploys) — re-render once data arrives.
+    fetchServerLeaderboard()
+      .then(function () { renderLeaderboardList(currentLeaderboardTab); })
+      .catch(function () { /* offline or no server */ });
+  }
+  $('trophyBtn').addEventListener('click', showLeaderboard);
+  $('leaderboardCloseBtn').addEventListener('click', function () {
+    $('leaderboardOverlay').classList.remove('active');
+  });
+
+  function allLevelsCleared() {
+    for (var i = 0; i < LEVELS.length; i++) {
+      if (!isLevelCleared(i)) return false;
+    }
+    return true;
+  }
+
+  function showCongrats() {
+    var tbody = $('congratsTbody');
+    tbody.innerHTML = '';
+    var total = 0;
+    LEVELS.forEach(function (lv, lvIdx) {
+      var bestStr = safeGet('lumin-chess-best-' + lv.id);
+      var b = bestStr ? parseInt(bestStr, 10) : 0;
+      total += b;
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + (lvIdx + 1) + ' &nbsp;&middot;&nbsp; ' + lv.name + '</td><td>' + b + '</td>';
+      tbody.appendChild(tr);
+    });
+    $('congratsTotal').textContent = total;
+    $('congratsOverlay').classList.add('active');
+    setTimeout(spawnConfetti, 200);
+  }
+
+  function spawnConfetti() {
+    var overlay = $('congratsOverlay');
+    var existing = overlay.querySelectorAll('.confetti');
+    for (var k = 0; k < existing.length; k++) existing[k].remove();
+    var colors = ['#4F46E5', '#7c6ef0', '#1C1B1A', '#D4CFBE', '#F2EFE6'];
+    var shapes = ['square', 'circle', 'square', 'rect'];
+    for (var i = 0; i < 36; i++) {
+      var c = document.createElement('div');
+      c.className = 'confetti ' + shapes[i % shapes.length];
+      c.style.left = (Math.random() * 100) + '%';
+      c.style.animationDelay = (Math.random() * 0.6) + 's';
+      c.style.animationDuration = (2.6 + Math.random() * 1.6) + 's';
+      c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      overlay.appendChild(c);
+    }
+  }
+
+  function getTargets(p1, p2) {
+    var targets = {};
+    var names = Object.keys(DIRS);
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i];
+      var dir = DIRS[name];
+      if (!isValidMove(p1, p2, dir)) continue;
+      var orig = {};
+      orig[p1.r + ',' + p1.c] = true;
+      orig[p2.r + ',' + p2.c] = true;
+      var np1 = { r: p1.r + dir.dr, c: p1.c + dir.dc };
+      var np2 = { r: p2.r + dir.dr, c: p2.c + dir.dc };
+      var ns = [np1, np2];
+      for (var j = 0; j < ns.length; j++) {
+        var k = ns[j].r + ',' + ns[j].c;
+        if (!orig[k]) targets[k] = name;
+      }
+    }
+    return targets;
+  }
+
+  function onCellClick(r, c) {
+    if (swipeSuppressClick) { swipeSuppressClick = false; return; }
+    // The tutorial is swipe-only — taps don't advance practice. Drop them.
+    if (practiceMode) return;
+    var targets = selected.length === 2 ? getTargets(selected[0], selected[1]) : {};
+    var dirName = targets[r + ',' + c];
+    if (dirName) {
+      executeMove(selected[0], selected[1], DIRS[dirName]);
+      return;
+    }
+    // Empty cells and blocked cells aren't selectable — clear any prior selection.
+    if (!isPiece(grid[r][c])) {
+      selected = [];
+      render();
+      return;
+    }
+    if (selected.length === 0) {
+      selected = [{ r: r, c: c }];
+    } else if (selected.length === 1) {
+      var first = selected[0];
+      if (first.r === r && first.c === c) {
+        selected = [];
+      } else if (isAdjacent(first, { r: r, c: c })) {
+        selected = [first, { r: r, c: c }];
+      } else {
+        selected = [{ r: r, c: c }];
+      }
+    } else {
+      var inSel = false;
+      for (var i = 0; i < selected.length; i++) {
+        if (selected[i].r === r && selected[i].c === c) inSel = true;
+      }
+      if (inSel) selected = [];
+      else selected = [{ r: r, c: c }];
+    }
+    render();
+  }
+
+  function pieceClass(code) {
+    if (code === 'B') return 'piece black';
+    if (code === 'W') return 'piece white';
+    if (code === 'G') return 'piece gray';
+    return 'piece';
+  }
+  function markerClass(code) {
+    if (code === 'B') return 'goal-marker black';
+    if (code === 'W') return 'goal-marker white';
+    return 'goal-marker';
+  }
+
+  function render() {
+    var board = $('board');
+    // Strip cells only — leave the practice swipe-guide SVG in place so it
+    // doesn't get nuked on every move/load.
+    var cells = board.querySelectorAll('.cell');
+    for (var ci = 0; ci < cells.length; ci++) cells[ci].remove();
+    var targets = selected.length === 2 ? getTargets(selected[0], selected[1]) : {};
+    var markers = level.goalMarkers;
+    var hintCells = getPracticeHintCells();
+
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        (function (r, c) {
+          var cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          // Blocked cells render as off-board — no pieces, no markers, no clicks.
+          if (grid[r][c] === 'X') {
+            cell.classList.add('blocked');
+            board.appendChild(cell);
+            return;
+          }
+          var key = r + ',' + c;
+          for (var hi = 0; hi < hintCells.length; hi++) {
+            if (hintCells[hi].r === r && hintCells[hi].c === c) {
+              cell.classList.add('t-hint');
+              cell.classList.add('t-hint-' + hintCells[hi].order);
+              break;
+            }
+          }
+          if (targets[key]) {
+            cell.classList.add('target');
+            var icon = document.createElement('div');
+            icon.className = 'target-icon';
+            icon.textContent = DIRS[targets[key]].label;
+            cell.appendChild(icon);
+          }
+          // Only B and W get goal markers — G is stationary, X is invariant.
+          if (markers && (markers[r][c] === 'B' || markers[r][c] === 'W') && grid[r][c] !== markers[r][c]) {
+            var marker = document.createElement('div');
+            marker.className = markerClass(markers[r][c]);
+            cell.appendChild(marker);
+          }
+          if (isPiece(grid[r][c])) {
+            var piece = document.createElement('div');
+            piece.className = pieceClass(grid[r][c]);
+            var isSel = false;
+            for (var i = 0; i < selected.length; i++) {
+              if (selected[i].r === r && selected[i].c === c) isSel = true;
+            }
+            if (isSel) {
+              piece.classList.add('selected');
+            } else if (selected.length === 1 && isAdjacent(selected[0], { r: r, c: c })) {
+              piece.classList.add('hint');
+            }
+            cell.appendChild(piece);
+          }
+          cell.addEventListener('click', function () { onCellClick(r, c); });
+          board.appendChild(cell);
+        })(r, c);
+      }
+    }
+  }
+
+  $('undoBtn').addEventListener('click', function () {
+    if (!history.length) return;
+    var prev = history.pop();
+    grid = prev.grid;
+    moveCount = prev.moveCount;
+    selected = [];
+    $('winOverlay').classList.remove('active');
+    updateStats();
+    render();
+  });
+
+  $('resetBtn').addEventListener('click', function () {
+    loadLevel(currentLevelIdx);
+  });
+
+  $('winReplayBtn').addEventListener('click', function () {
+    loadLevel(currentLevelIdx);
+  });
+
+  $('winNextBtn').addEventListener('click', function () {
+    if (currentLevelIdx < LEVELS.length - 1) loadLevel(currentLevelIdx + 1);
+  });
+
+  $('congratsReplayBtn').addEventListener('click', function () {
+    $('congratsOverlay').classList.remove('active');
+    // Remove confetti elements
+    var ov = $('congratsOverlay');
+    var oldConfetti = ov.querySelectorAll('.confetti');
+    for (var k = 0; k < oldConfetti.length; k++) oldConfetti[k].remove();
+    loadLevel(0);
+  });
+
+  // ─── Tutorial & practice ────────────────────────────────────────────────
+  var practiceMode = false;
+  var practiceStep = 0;
+  var tutorialSlide = 1;
+  var TUTORIAL_SLIDES = 3;
+
+  // Each practice step has a fixed canonical pair + direction. Smart-swipe
+  // picks any valid pair in normal play, but inside practice we override it
+  // with the canonical one so the puzzle reaches the same state regardless
+  // of where the player swipes — important so step 3 (right-slide) always has
+  // a valid W+B pair to move. The player just has to swipe in the right
+  // DIRECTION; the visible hint cells point at where the canonical pair is.
+  var PRACTICE_STEPS = {
+    1: { dir: 'down',  pair: [{ r: 0, c: 0 }, { r: 0, c: 1 }] },
+    2: { dir: 'up',    pair: [{ r: 1, c: 0 }, { r: 2, c: 0 }] },
+    3: { dir: 'right', pair: [{ r: 1, c: 0 }, { r: 1, c: 1 }] }
+  };
+
+  function getPracticeHintCells() {
+    if (!practiceMode) return [];
+    if (practiceStep === 1) {
+      return [
+        { r: 0, c: 0, order: 1 },
+        { r: 0, c: 1, order: 1 },
+        { r: 1, c: 0, order: 2 },
+        { r: 1, c: 1, order: 2 }
+      ];
+    }
+    if (practiceStep === 2) {
+      return [
+        { r: 1, c: 0, order: 1 },
+        { r: 2, c: 0, order: 1 },
+        { r: 0, c: 0, order: 2 }
+      ];
+    }
+    if (practiceStep === 3) {
+      return [
+        { r: 1, c: 0, order: 1 },
+        { r: 1, c: 1, order: 1 },
+        { r: 1, c: 2, order: 2 }
+      ];
+    }
+    return [];
+  }
+
+  function showPracticeHint() {
+    var banner = $('practiceHint');
+    var hints = {
+      1: '<span class="step-num">⌐</span>Swipe an <strong>L</strong> over the top-left two blacks, then down',
+      2: '<span class="step-num">↑</span>Now swipe <strong>up</strong> over the left black + white pair',
+      3: '<span class="step-num">→</span>Now swipe <strong>right</strong> over the white + black pair in the middle row',
+      4: '✓&nbsp; You\'re ready to play.'
+    };
+    if (practiceStep >= 1 && practiceStep <= 4) {
+      banner.innerHTML = hints[practiceStep];
+      banner.classList.add('active');
+    } else {
+      banner.classList.remove('active');
+    }
+    updatePracticeGuide();
+  }
+
+  // Cell-center coordinates in the board's own pixel space (matches the SVG
+  // viewBox we'll set below). Mirrors the geometry resizeBoard() uses.
+  function boardCellCenter(r, c) {
+    var board = $('board');
+    var padding = 8, gap = 8;
+    var cellSize = (board.offsetWidth - padding * 2 - gap * (COLS - 1)) / COLS;
+    return {
+      x: padding + (cellSize + gap) * c + cellSize / 2,
+      y: padding + (cellSize + gap) * r + cellSize / 2
+    };
+  }
+
+  // Per-step swipe path drawn over the board (in board pixel coords). Each
+  // entry returns the SVG `d` string for that step's guide.
+  var PRACTICE_GUIDE_PATHS = {
+    1: function () { // L: (0,0) → (0,1) → (1,1)
+      var a = boardCellCenter(0, 0);
+      var b = boardCellCenter(0, 1);
+      var c = boardCellCenter(1, 1);
+      return 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y + ' L ' + c.x + ' ' + c.y;
+    },
+    2: function () { // straight UP: (2,0) → (1,0) → (0,0)
+      var a = boardCellCenter(2, 0);
+      var b = boardCellCenter(0, 0);
+      return 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y;
+    },
+    3: function () { // straight RIGHT: (1,0) → (1,1) → (1,2)
+      var a = boardCellCenter(1, 0);
+      var b = boardCellCenter(1, 2);
+      return 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y;
+    }
+  };
+
+  function updatePracticeGuide() {
+    var svg = $('practiceGuide');
+    if (!svg) return;
+    var build = practiceMode && PRACTICE_GUIDE_PATHS[practiceStep];
+    if (!build) {
+      svg.classList.remove('active');
+      return;
+    }
+    var board = $('board');
+    svg.setAttribute('viewBox', '0 0 ' + board.offsetWidth + ' ' + board.offsetHeight);
+    $('practiceGuidePath').setAttribute('d', build());
+    svg.classList.add('active');
+    // Restart the dot's traversal from the new path's start so step changes
+    // don't leave it stranded somewhere along the old path.
+    try { $('practiceGuideMotion').beginElement(); } catch (e) {}
+  }
+
+  function exitPractice() {
+    practiceMode = false;
+    practiceStep = 0;
+    $('practiceHint').classList.remove('active');
+    updatePracticeGuide();
+    safeSet('lumin-chess-tutorial-done', '1');
+    // Leave the board in the partially-solved state from practice so the
+    // player can keep playing from where they are — moves and time accrued
+    // during practice stay on the clock (they're real moves on a real board).
+    render();
+  }
+
+  function updateTutorialSlide() {
+    document.querySelectorAll('.tutorial-slide').forEach(function (s) {
+      s.classList.toggle('active', +s.dataset.slide === tutorialSlide);
+    });
+    document.querySelectorAll('.tutorial-pdot').forEach(function (d) {
+      d.classList.toggle('active', +d.dataset.dot === tutorialSlide);
+    });
+    $('tutorialSkipBtn').textContent = tutorialSlide === 1 ? 'Skip' : 'Back';
+    $('tutorialNextBtn').textContent = tutorialSlide >= TUTORIAL_SLIDES ? 'Try a move →' : 'Next';
+    // Version label is intentionally subtle — only on slide 1, top-right.
+    $('tutorialVersion').classList.toggle('show-version', tutorialSlide === 1);
+  }
+
+  function openTutorial() {
+    // Make sure we're on Level 1 so the practice script lines up
+    if (currentLevelIdx !== 0) {
+      loadLevel(0);
+    } else {
+      loadLevel(0); // reset board state
+    }
+    exitPractice(); // clear any practice in progress
+    $('practiceHint').classList.remove('active');
+    tutorialSlide = 1;
+    updateTutorialSlide();
+    $('tutorialOverlay').classList.add('active');
+  }
+
+  function closeTutorialModal() {
+    $('tutorialOverlay').classList.remove('active');
+  }
+
+  function startPractice() {
+    closeTutorialModal();
+    loadLevel(0); // ensure clean Level 1 state
+    practiceMode = true;
+    practiceStep = 1;
+    showPracticeHint();
+    render();
+  }
+
+  function tutorialAdvance() {
+    if (tutorialSlide < TUTORIAL_SLIDES) {
+      tutorialSlide++;
+      updateTutorialSlide();
+    } else {
+      startPractice();
+    }
+  }
+  function tutorialGoBack() {
+    if (tutorialSlide > 1) {
+      tutorialSlide--;
+      updateTutorialSlide();
+    } else {
+      closeTutorialModal();
+      safeSet('lumin-chess-tutorial-done', '1');
+    }
+  }
+  $('tutorialNextBtn').addEventListener('click', tutorialAdvance);
+  $('tutorialSkipBtn').addEventListener('click', tutorialGoBack);
+  $('helpBtn').addEventListener('click', openTutorial);
+
+  // Horizontal swipe on the tutorial card flips between slides (left = next,
+  // right = back). Vertical-dominant swipes are ignored so it doesn't fight
+  // with normal scroll/tap behavior on the modal text.
+  (function setupTutorialSwipe() {
+    var card = document.querySelector('.tutorial-card');
+    if (!card) return;
+    var sx = null, sy = null;
+    card.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) { sx = null; return; }
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+    }, { passive: true });
+    card.addEventListener('touchend', function (e) {
+      if (sx == null || !e.changedTouches.length) { sx = null; return; }
+      var dx = e.changedTouches[0].clientX - sx;
+      var dy = e.changedTouches[0].clientY - sy;
+      sx = null;
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      if (dx < 0) tutorialAdvance();
+      else tutorialGoBack();
+    }, { passive: true });
+    card.addEventListener('touchcancel', function () { sx = null; });
+  })();
+
+  // ─── Move feedback: haptics + Web Audio tones ───────────────────────────
+  // Single short pulse + bright tick on a successful move; double pulse + a
+  // soft "bzz-bzz" when the player swipes but no move lands (wrong pair,
+  // blocked direction, etc). Audio is synthesized so there are no assets to
+  // bundle; vibration is a no-op on devices that don't expose the API.
+  var audioCtx = null;
+  function getAudio() {
+    if (audioCtx === null) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) { audioCtx = false; }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      try { audioCtx.resume(); } catch (_) {}
+    }
+    return audioCtx || null;
+  }
+  function playTone(freq, durSec, type, peakGain) {
+    var ctx = getAudio();
+    if (!ctx) return;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    var now = ctx.currentTime;
+    var peak = peakGain == null ? 0.16 : peakGain;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(peak, now + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + durSec);
+    osc.start(now);
+    osc.stop(now + durSec + 0.02);
+  }
+  // Prefer Capacitor's native Haptics plugin (UIImpactFeedbackGenerator on iOS,
+  // VibrationEffect on Android API 26+ for nicer-feeling pulses); fall back to
+  // the Web Vibration API for plain browsers. iOS Safari/Chrome don't expose
+  // navigator.vibrate at all, so iOS players only feel haptics in the
+  // Capacitor-wrapped app — not on the mobile web.
+  function capHaptics() {
+    try {
+      var cap = window.Capacitor;
+      if (cap && cap.Plugins && cap.Plugins.Haptics) return cap.Plugins.Haptics;
+    } catch (e) {}
+    return null;
+  }
+  function buzz(kind) {
+    var h = capHaptics();
+    if (h) {
+      try {
+        if (kind === 'success') { h.impact({ style: 'LIGHT' }); return; }
+        if (kind === 'fail')    { h.notification({ type: 'WARNING' }); return; }
+      } catch (e) { /* fall through to web API */ }
+    }
+    try {
+      if (!navigator.vibrate) return;
+      if (kind === 'success') navigator.vibrate(15);
+      else if (kind === 'fail') navigator.vibrate([15, 70, 15]);
+    } catch (e) {}
+  }
+  function feedbackMoveSuccess() {
+    buzz('success');
+    playTone(880, 0.08, 'sine', 0.18);
+  }
+  function feedbackMoveFail() {
+    buzz('fail');
+    playTone(220, 0.07, 'sine', 0.14);
+    setTimeout(function () { playTone(175, 0.07, 'sine', 0.14); }, 95);
+  }
+
+  // ─── Swipe gestures ─────────────────────────────────────────────────────
+  var swipeSuppressClick = false;
+  var swipeTrailLast = null;
+
+  function addTrailDot(x, y) {
+    if (swipeTrailLast) {
+      var ddx = x - swipeTrailLast.x;
+      var ddy = y - swipeTrailLast.y;
+      if (ddx * ddx + ddy * ddy < 196) return; // skip if within 14px
+    }
+    swipeTrailLast = { x: x, y: y };
+    var dot = document.createElement('div');
+    dot.className = 'swipe-trail-dot';
+    dot.style.left = x + 'px';
+    dot.style.top = y + 'px';
+    document.body.appendChild(dot);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { dot.classList.add('fade'); });
+    });
+    setTimeout(function () { if (dot.parentNode) dot.parentNode.removeChild(dot); }, 500);
+  }
+
+  (function setupSwipe() {
+    var board = $('board');
+    var active = false;
+    var swipeOrigin = null;  // {x, y} at touchstart
+    var swipeLast = null;    // {x, y} at the latest touchmove
+    var swipePath = [];      // full point trail for L-shape detection
+    var mouseDown = false;
+    // Multi-touch gesture: two fingers on adjacent pieces, slide together.
+    var mt = null;
+
+    function pointToCell(x, y) {
+      var el = document.elementFromPoint(x, y);
+      if (!el) return null;
+      var cell = el.closest ? el.closest('.cell') : null;
+      if (!cell || cell.dataset.r == null) return null;
+      return { r: +cell.dataset.r, c: +cell.dataset.c };
+    }
+
+    function cellPitch() {
+      var padding = 8, gap = 8;
+      return (board.offsetWidth - padding * 2 - gap * (COLS - 1)) / COLS;
+    }
+
+    // Pixel center of a single cell (for nearest-pair distance math).
+    function pairCenterPx(p1, p2) {
+      var rect = board.getBoundingClientRect();
+      var padding = 8, gap = 8;
+      var size = cellPitch();
+      var x1 = rect.left + padding + (size + gap) * p1.c + size / 2;
+      var y1 = rect.top + padding + (size + gap) * p1.r + size / 2;
+      var x2 = rect.left + padding + (size + gap) * p2.c + size / 2;
+      var y2 = rect.top + padding + (size + gap) * p2.r + size / 2;
+      return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+    }
+
+    // All adjacent piece pairs (orthogonal, distinct) on the current grid.
+    function getAllPiecePairs() {
+      var pairs = [];
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          if (!isPiece(grid[r][c])) continue;
+          if (c + 1 < COLS && isPiece(grid[r][c + 1])) pairs.push([{ r: r, c: c }, { r: r, c: c + 1 }]);
+          if (r + 1 < ROWS && isPiece(grid[r + 1][c])) pairs.push([{ r: r, c: c }, { r: r + 1, c: c }]);
+        }
+      }
+      return pairs;
+    }
+
+    // Walk a slice of the swipe path and return the pair of adjacent piece cells
+    // the path traces over. Direct-manipulation: the moving pair is the one the
+    // finger actually crossed — not the closest pair to some anchor.
+    //   fromEnd = true   → pair adjacent to the corner end (used for L's leg 1)
+    //   fromEnd = false  → pair encountered first (used for straight swipes)
+    function findPairUnderPath(pathPts, startIdx, endIdx, fromEnd) {
+      var visited = [];
+      var lastKey = null;
+      for (var i = startIdx; i <= endIdx; i++) {
+        var c = pointToCell(pathPts[i].x, pathPts[i].y);
+        if (!c) continue;
+        var key = c.r + ',' + c.c;
+        if (key === lastKey) continue;
+        lastKey = key;
+        if (!grid[c.r] || !isPiece(grid[c.r][c.c])) continue;
+        visited.push(c);
+      }
+      if (fromEnd) {
+        for (var j = visited.length - 2; j >= 0; j--) {
+          if (isAdjacent(visited[j], visited[j + 1])) {
+            return { p1: visited[j], p2: visited[j + 1] };
+          }
+        }
+      } else {
+        for (var k = 0; k < visited.length - 1; k++) {
+          if (isAdjacent(visited[k], visited[k + 1])) {
+            return { p1: visited[k], p2: visited[k + 1] };
+          }
+        }
+      }
+      return null;
+    }
+
+    function dirNameFromDxDy(dx, dy) {
+      if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+      return dy > 0 ? 'down' : 'up';
+    }
+
+    // Classify a swipe path as 'straight' or 'L'. For 'L', we find the corner
+    // (point of max perpendicular deviation from the start-end chord) and
+    // split the swipe into two legs along different axes. The L's first leg
+    // identifies the pair's orientation (the user swipes along the pair),
+    // the second leg identifies the move direction.
+    //
+    // A straight swipe forces parallel movement (pair axis = move axis), which
+    // is what makes the gesture deliberate — to slide a pair perpendicular to
+    // its own axis the player must draw an L.
+    function classifySwipe(pathPts) {
+      if (!pathPts || pathPts.length < 2) return null;
+      var s = pathPts[0];
+      var e = pathPts[pathPts.length - 1];
+      var totalDx = e.x - s.x, totalDy = e.y - s.y;
+      var chord = Math.sqrt(totalDx * totalDx + totalDy * totalDy);
+      if (chord < 5) return null;
+
+      var maxPerp = 0, cornerIdx = -1;
+      for (var i = 1; i < pathPts.length - 1; i++) {
+        var p = pathPts[i];
+        var perp = Math.abs(totalDx * (p.y - s.y) - totalDy * (p.x - s.x)) / chord;
+        if (perp > maxPerp) { maxPerp = perp; cornerIdx = i; }
+      }
+
+      var pitch = cellPitch();
+      var L_BEND = Math.max(20, pitch * 0.30);
+      var MIN_LEG = Math.max(20, pitch * 0.30);
+
+      if (maxPerp < L_BEND || cornerIdx < 1) {
+        return { type: 'straight', dx: totalDx, dy: totalDy };
+      }
+
+      var corner = pathPts[cornerIdx];
+      var leg1Dx = corner.x - s.x, leg1Dy = corner.y - s.y;
+      var leg2Dx = e.x - corner.x, leg2Dy = e.y - corner.y;
+      var leg1Len = Math.sqrt(leg1Dx * leg1Dx + leg1Dy * leg1Dy);
+      var leg2Len = Math.sqrt(leg2Dx * leg2Dx + leg2Dy * leg2Dy);
+      if (leg1Len < MIN_LEG || leg2Len < MIN_LEG) {
+        return { type: 'straight', dx: totalDx, dy: totalDy };
+      }
+      var leg1Axis = Math.abs(leg1Dx) > Math.abs(leg1Dy) ? 'h' : 'v';
+      var leg2Axis = Math.abs(leg2Dx) > Math.abs(leg2Dy) ? 'h' : 'v';
+      if (leg1Axis === leg2Axis) {
+        return { type: 'straight', dx: totalDx, dy: totalDy };
+      }
+      return {
+        type: 'L',
+        corner: corner,
+        cornerIdx: cornerIdx,
+        leg1: { dx: leg1Dx, dy: leg1Dy, axis: leg1Axis },
+        leg2: { dx: leg2Dx, dy: leg2Dy, axis: leg2Axis }
+      };
+    }
+
+    function start(x, y) {
+      swipeOrigin = { x: x, y: y };
+      swipeLast = { x: x, y: y };
+      swipePath = [{ x: x, y: y }];
+      swipeTrailLast = null;
+      active = true;
+    }
+
+    function move(x, y) {
+      if (!active) return false;
+      addTrailDot(x, y);
+      swipeLast = { x: x, y: y };
+      // Sample every ~6px so the path is dense enough for corner detection
+      // without ballooning on slow strokes.
+      var prev = swipePath[swipePath.length - 1];
+      if (!prev || (x - prev.x) * (x - prev.x) + (y - prev.y) * (y - prev.y) >= 36) {
+        swipePath.push({ x: x, y: y });
+      }
+      return false;
+    }
+
+    function end() {
+      var wasActive = active;
+      active = false;
+      swipeTrailLast = null;
+      if (!wasActive || swipePath.length === 0) {
+        swipeOrigin = null; swipeLast = null; swipePath = [];
+        return;
+      }
+      var pts = swipePath;
+      swipeOrigin = null; swipeLast = null; swipePath = [];
+
+      var origin = pts[0];
+      var last = pts[pts.length - 1];
+      var totalDx = last.x - origin.x, totalDy = last.y - origin.y;
+      // Below threshold it's a tap → let onCellClick handle it.
+      var threshold = Math.max(18, cellPitch() * 0.3);
+      if (Math.abs(totalDx) < threshold && Math.abs(totalDy) < threshold) return;
+
+      var shape = classifySwipe(pts);
+      if (!shape) { feedbackMoveFail(); return; }
+
+      // Identify the pair by tracing which cells the swipe physically passes
+      // over. For an L, the pair lives along leg 1 (and is adjacent to the
+      // corner). For a straight swipe, the pair is the first adjacent piece
+      // pair the swipe crosses.
+      var dirName, pair;
+      if (shape.type === 'L') {
+        dirName = dirNameFromDxDy(shape.leg2.dx, shape.leg2.dy);
+        pair = findPairUnderPath(pts, 0, shape.cornerIdx, true);
+      } else {
+        dirName = dirNameFromDxDy(shape.dx, shape.dy);
+        pair = findPairUnderPath(pts, 0, pts.length - 1, false);
+      }
+      if (!pair) { feedbackMoveFail(); return; }
+      var dir = DIRS[dirName];
+      if (!isValidMove(pair.p1, pair.p2, dir)) { feedbackMoveFail(); return; }
+
+      if (practiceMode) {
+        // Three-step swipe practice. We require the player's swipe to land on
+        // the canonical pair so the board reaches a predictable state for the
+        // next step (otherwise step 3's right-slide may not be available).
+        // Step 1 specifically requires an L (perpendicular slide); steps 2-3
+        // are parallel slides and a straight swipe is enough.
+        var spec = PRACTICE_STEPS[practiceStep];
+        if (!spec || dirName !== spec.dir) { feedbackMoveFail(); return; }
+        if (practiceStep === 1 && shape.type !== 'L') { feedbackMoveFail(); return; }
+        var spA = spec.pair[0], spB = spec.pair[1];
+        var matches = (spA.r === pair.p1.r && spA.c === pair.p1.c && spB.r === pair.p2.r && spB.c === pair.p2.c) ||
+                      (spA.r === pair.p2.r && spA.c === pair.p2.c && spB.r === pair.p1.r && spB.c === pair.p1.c);
+        if (!matches) { feedbackMoveFail(); return; }
+        executeMove(spec.pair[0], spec.pair[1], DIRS[spec.dir]);
+        practiceStep += 1;
+        showPracticeHint();
+        if (practiceStep === 4) setTimeout(exitPractice, 2200);
+        swipeSuppressClick = true;
+        return;
+      }
+
+      executeMove(pair.p1, pair.p2, dir);
+      swipeSuppressClick = true;
+    }
+
+    // ── Multi-touch: two fingers on an adjacent pair, slide both together. ──
+    function highlightSelected() {
+      var prev = board.querySelectorAll('.piece.selected');
+      for (var i = 0; i < prev.length; i++) prev[i].classList.remove('selected');
+      for (var j = 0; j < selected.length; j++) {
+        var s = selected[j];
+        var cell = board.querySelector('.cell[data-r="' + s.r + '"][data-c="' + s.c + '"]');
+        var piece = cell ? cell.querySelector('.piece') : null;
+        if (piece) piece.classList.add('selected');
+      }
+    }
+
+    function startMulti(t0, t1) {
+      var c1 = pointToCell(t0.clientX, t0.clientY);
+      var c2 = pointToCell(t1.clientX, t1.clientY);
+      if (!c1 || !c2) return false;
+      if (c1.r === c2.r && c1.c === c2.c) return false;
+      if (!grid[c1.r] || !isPiece(grid[c1.r][c1.c])) return false;
+      if (!grid[c2.r] || !isPiece(grid[c2.r][c2.c])) return false;
+      if (!isAdjacent(c1, c2)) return false;
+      // Cancel any in-progress single-finger swipe; visually select the pair.
+      // (Strict mode: must use the declared swipePath, not an implicit global.)
+      active = false;
+      swipePath = [];
+      selected = [c1, c2];
+      // Toggle the selected class directly — calling render() would rebuild the
+      // cell DOM, remove the touch targets, and trigger touchcancel on Android.
+      highlightSelected();
+      mt = {
+        pair: [c1, c2],
+        startX: (t0.clientX + t1.clientX) / 2,
+        startY: (t0.clientY + t1.clientY) / 2,
+        executed: false
+      };
+      return true;
+    }
+
+    function moveMulti(t0, t1) {
+      if (!mt || mt.executed) return;
+      var avgX = (t0.clientX + t1.clientX) / 2;
+      var avgY = (t0.clientY + t1.clientY) / 2;
+      var dx = avgX - mt.startX;
+      var dy = avgY - mt.startY;
+      var threshold = cellPitch() * 0.35;
+      if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
+      var dir;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        dir = dx > 0 ? DIRS.right : DIRS.left;
+      } else {
+        dir = dy > 0 ? DIRS.down : DIRS.up;
+      }
+      var a = mt.pair[0], b = mt.pair[1];
+      if (!isValidMove(a, b, dir)) {
+        // Re-anchor so a different direction can still trigger.
+        mt.startX = avgX;
+        mt.startY = avgY;
+        return;
+      }
+      if (practiceMode) {
+        // Practice is single-finger swipe only — two-finger gestures are ignored
+        // during practice so the player completes the two required swipes.
+        return;
+      }
+      mt.executed = true;
+      executeMove(a, b, dir);
+      swipeSuppressClick = true;
+    }
+
+    function endMulti() {
+      // If the user picked a pair with two fingers but lifted off without ever
+      // landing a valid direction, give a fail nudge so the gesture isn't
+      // silently dropped.
+      if (mt && !mt.executed) feedbackMoveFail();
+      mt = null;
+    }
+
+    board.addEventListener('touchstart', function (e) {
+      if (e.touches.length >= 2) {
+        if (startMulti(e.touches[0], e.touches[1])) {
+          // Claim the two-finger gesture before the OS interprets it (zoom, etc).
+          try { e.preventDefault(); } catch (_) {}
+        }
+      } else if (e.touches.length === 1 && !mt) {
+        start(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
+    board.addEventListener('touchmove', function (e) {
+      if (mt) {
+        if (e.touches.length >= 2) moveMulti(e.touches[0], e.touches[1]);
+        try { e.preventDefault(); } catch (_) {}
+        return;
+      }
+      if (e.touches.length === 1 && active) {
+        move(e.touches[0].clientX, e.touches[0].clientY);
+        if (swipePath.length >= 2) {
+          try { e.preventDefault(); } catch (_) {}
+        }
+      }
+    }, { passive: false });
+    board.addEventListener('touchend', function (e) {
+      if (mt) {
+        if (e.touches.length < 2) endMulti();
+        return;
+      }
+      end();
+    });
+    board.addEventListener('touchcancel', function () {
+      active = false; swipePath = []; mt = null;
+    });
+
+    board.addEventListener('mousedown', function (e) {
+      mouseDown = true;
+      start(e.clientX, e.clientY);
+    });
+    document.addEventListener('mousemove', function (e) {
+      if (mouseDown) move(e.clientX, e.clientY);
+    });
+    document.addEventListener('mouseup', function () {
+      if (mouseDown) { mouseDown = false; end(); }
+    });
+  })();
+
+  // ─── BFS optimal (small boards only) ────────────────────────────────────
+  function bfsOptimal(lv) {
+    if (lv.rows * lv.cols > 12) return null;
+    if (lv.isGoal) return null;
+    var R = lv.rows, C = lv.cols;
+    var start = '', goalKey = '';
+    for (var r = 0; r < R; r++) for (var c = 0; c < C; c++) {
+      start += lv.init[r][c] || '.';
+      goalKey += lv.goal[r][c] || '.';
+    }
+    if (start === goalKey) return 0;
+    var seen = {};
+    seen[start] = true;
+    var frontier = [start];
+    var depth = 0;
+    while (frontier.length) {
+      depth++;
+      var next = [];
+      for (var fi = 0; fi < frontier.length; fi++) {
+        var key = frontier[fi];
+        for (var r = 0; r < R; r++) for (var c = 0; c < C; c++) {
+          if (key[r * C + c] === '.') continue;
+          var nbrs = [[0, 1], [1, 0]];
+          for (var ni = 0; ni < nbrs.length; ni++) {
+            var dr = nbrs[ni][0], dc = nbrs[ni][1];
+            var r2 = r + dr, c2 = c + dc;
+            if (r2 >= R || c2 >= C || key[r2 * C + c2] === '.') continue;
+            var moves = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (var mi = 0; mi < moves.length; mi++) {
+              var mdr = moves[mi][0], mdc = moves[mi][1];
+              var nr1 = r + mdr, nc1 = c + mdc;
+              var nr2 = r2 + mdr, nc2 = c2 + mdc;
+              if (nr1 < 0 || nr1 >= R || nc1 < 0 || nc1 >= C) continue;
+              if (nr2 < 0 || nr2 >= R || nc2 < 0 || nc2 >= C) continue;
+              var dA = nr1 * C + nc1, dB = nr2 * C + nc2;
+              var srcA = r * C + c, srcB = r2 * C + c2;
+              if (dA !== srcA && dA !== srcB && key[dA] !== '.') continue;
+              if (dB !== srcA && dB !== srcB && key[dB] !== '.') continue;
+              var arr = key.split('');
+              var a = arr[srcA], b = arr[srcB];
+              arr[srcA] = '.';
+              arr[srcB] = '.';
+              arr[dA] = a;
+              arr[dB] = b;
+              var nk = arr.join('');
+              if (nk === goalKey) return depth;
+              if (!seen[nk]) { seen[nk] = true; next.push(nk); }
+            }
+          }
+        }
+      }
+      frontier = next;
+    }
+    return -1;
+  }
+
+  // ─── Boot ───────────────────────────────────────────────────────────────
+  // Reflect the bundled APP_VERSION in the tutorial footer (small + dim).
+  try { $('tutorialVersion').textContent = APP_VERSION; } catch (e) {}
+
+  var savedIdx = safeGet('lumin-chess-level');
+  var startIdx = savedIdx == null ? 0 : Math.max(0, Math.min(LEVELS.length - 1, parseInt(savedIdx, 10)));
+  loadLevel(startIdx);
+
+  // Dismiss the boot splash after a hold, then open the tutorial if needed.
+  // Admin peek mode (?lb=peek-all) skips the tutorial and pops the leaderboard
+  // immediately so an inspector lands directly on the all-levels view.
+  var boot = $('bootSplash');
+  setTimeout(function () {
+    boot.classList.add('gone');
+    setTimeout(function () {
+      boot.classList.add('removed');
+      if (ADMIN_LB_VIEW) {
+        showLeaderboard();
+      } else if (safeGet('lumin-chess-tutorial-done') !== '1') {
+        openTutorial();
+      }
+    }, 600);
+  }, 2000);
+
+  setTimeout(function () {
+    try {
+      LEVELS.forEach(function (lv) {
+        var opt = bfsOptimal(lv);
+        if (typeof console !== 'undefined') {
+          console.log('[Lumin Chess] Level ' + lv.id + ' optimal:', opt == null ? 'skipped' : opt);
+        }
+      });
+    } catch (e) {}
+  }, 100);
+
+  // Pull the shared leaderboard from the server (web deploys with leaderboard.php).
+  // Quietly does nothing in the Android APK or on static hosts.
+  fetchServerLeaderboard().catch(function () {});
+})();
+</script>
+</body>
+</html>

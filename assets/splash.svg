@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732">
+  <defs>
+    <radialGradient id="black" cx="40%" cy="35%" r="62%">
+      <stop offset="0%" stop-color="#5b5853"/>
+      <stop offset="50%" stop-color="#2b2926"/>
+      <stop offset="100%" stop-color="#0a0908"/>
+    </radialGradient>
+    <radialGradient id="white" cx="40%" cy="35%" r="62%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="#f2efe6"/>
+      <stop offset="100%" stop-color="#c5c0af"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="38%">
+      <stop offset="0%" stop-color="#7c6ef0" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="2732" height="2732" fill="#F5F4F2"/>
+  <circle cx="1366" cy="1300" r="900" fill="url(#glow)"/>
+  <circle cx="1243.5" cy="1300" r="210" fill="url(#black)"/>
+  <circle cx="1488.5" cy="1300" r="210" fill="url(#white)"/>
+  <text x="1366" y="1680" text-anchor="middle"
+        font-family="-apple-system, system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="172" font-weight="700" fill="#1C1B1A"
+        letter-spacing="-5">Lumin Chess</text>
+</svg>

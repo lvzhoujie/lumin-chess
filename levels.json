@@ -1,0 +1,1408 @@
+{
+  "schema": "lumin-chess-level/v3-solved",
+  "generated": "2026-05-15T06:17:24Z",
+  "canvas": {
+    "rows": 5,
+    "cols": 5
+  },
+  "goalRule": "swap-W-B (gray stays, blocked cells = X)",
+  "solver": {
+    "algorithm": "bidirectional BFS over byte-encoded states; previously-solved designs reused by trimmed.init match",
+    "moveRule": "pair of orthogonally adjacent stones + cardinal direction; both slide 1 cell; destinations empty-or-vacated and in-bounds and not blocked"
+  },
+  "ranking": [
+    {
+      "rank": 1,
+      "designIndex": 0,
+      "designNumber": 1,
+      "minMoves": 24,
+      "unlockThreshold": 36,
+      "rows": 4,
+      "cols": 4,
+      "pieces": {
+        "W": 6,
+        "B": 6,
+        "G": 0
+      },
+      "hasBlocked": false
+    },
+    {
+      "rank": 2,
+      "designIndex": 1,
+      "designNumber": 2,
+      "minMoves": 26,
+      "unlockThreshold": 39,
+      "rows": 3,
+      "cols": 5,
+      "pieces": {
+        "W": 6,
+        "B": 6,
+        "G": 0
+      },
+      "hasBlocked": false
+    },
+    {
+      "rank": 3,
+      "designIndex": 5,
+      "designNumber": 6,
+      "minMoves": 26,
+      "unlockThreshold": 39,
+      "rows": 3,
+      "cols": 4,
+      "pieces": {
+        "W": 4,
+        "B": 4,
+        "G": 2
+      },
+      "hasBlocked": false
+    },
+    {
+      "rank": 4,
+      "designIndex": 2,
+      "designNumber": 3,
+      "minMoves": 34,
+      "unlockThreshold": 51,
+      "rows": 3,
+      "cols": 5,
+      "pieces": {
+        "W": 5,
+        "B": 5,
+        "G": 0
+      },
+      "hasBlocked": true
+    },
+    {
+      "rank": 5,
+      "designIndex": 3,
+      "designNumber": 4,
+      "minMoves": 42,
+      "unlockThreshold": 63,
+      "rows": 5,
+      "cols": 5,
+      "pieces": {
+        "W": 4,
+        "B": 4,
+        "G": 8
+      },
+      "hasBlocked": true
+    },
+    {
+      "rank": 6,
+      "designIndex": 4,
+      "designNumber": 5,
+      "minMoves": 44,
+      "unlockThreshold": 66,
+      "rows": 5,
+      "cols": 5,
+      "pieces": {
+        "W": 8,
+        "B": 8,
+        "G": 0
+      },
+      "hasBlocked": true
+    }
+  ],
+  "skipped": [
+    {
+      "designIndex": 6,
+      "designNumber": 7,
+      "reason": "skipped \u2014 exceeds session compute budget; redesign with more empty cells or fewer pieces",
+      "rows": 5,
+      "cols": 5
+    }
+  ],
+  "levels": [
+    {
+      "index": 0,
+      "active": [
+        [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          true
+        ]
+      ],
+      "init": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          null,
+          "B",
+          null,
+          null,
+          "B"
+        ],
+        [
+          null,
+          "W",
+          null,
+          null,
+          "W"
+        ],
+        [
+          null,
+          "W",
+          "W",
+          "W",
+          "W"
+        ]
+      ],
+      "goal": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          null,
+          "W",
+          null,
+          null,
+          "W"
+        ],
+        [
+          null,
+          "B",
+          null,
+          null,
+          "B"
+        ],
+        [
+          null,
+          "B",
+          "B",
+          "B",
+          "B"
+        ]
+      ],
+      "trimmed": {
+        "rows": 4,
+        "cols": 4,
+        "rowOffset": 1,
+        "colOffset": 1,
+        "init": [
+          [
+            "B",
+            "B",
+            "B",
+            "B"
+          ],
+          [
+            "B",
+            null,
+            null,
+            "B"
+          ],
+          [
+            "W",
+            null,
+            null,
+            "W"
+          ],
+          [
+            "W",
+            "W",
+            "W",
+            "W"
+          ]
+        ],
+        "goal": [
+          [
+            "W",
+            "W",
+            "W",
+            "W"
+          ],
+          [
+            "W",
+            null,
+            null,
+            "W"
+          ],
+          [
+            "B",
+            null,
+            null,
+            "B"
+          ],
+          [
+            "B",
+            "B",
+            "B",
+            "B"
+          ]
+        ],
+        "hasInactiveInside": false
+      },
+      "solved": true,
+      "minMoves": 24,
+      "suggestedPar": 24,
+      "unlockThreshold": 36,
+      "reusedFromOldDesign": 4,
+      "rank": 1
+    },
+    {
+      "index": 1,
+      "active": [
+        [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      ],
+      "init": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          "B",
+          null,
+          null,
+          null,
+          "W"
+        ],
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "goal": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          "W",
+          null,
+          null,
+          null,
+          "B"
+        ],
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "trimmed": {
+        "rows": 3,
+        "cols": 5,
+        "rowOffset": 1,
+        "colOffset": 0,
+        "init": [
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ],
+          [
+            "B",
+            null,
+            null,
+            null,
+            "W"
+          ],
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ]
+        ],
+        "goal": [
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ],
+          [
+            "W",
+            null,
+            null,
+            null,
+            "B"
+          ],
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ]
+        ],
+        "hasInactiveInside": false
+      },
+      "solved": true,
+      "minMoves": 26,
+      "suggestedPar": 26,
+      "unlockThreshold": 39,
+      "reusedFromOldDesign": 5,
+      "rank": 2
+    },
+    {
+      "index": 5,
+      "active": [
+        [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      ],
+      "init": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          null,
+          "G",
+          null,
+          null,
+          "G"
+        ],
+        [
+          null,
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "goal": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          null,
+          "G",
+          null,
+          null,
+          "G"
+        ],
+        [
+          null,
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "trimmed": {
+        "rows": 3,
+        "cols": 4,
+        "rowOffset": 1,
+        "colOffset": 1,
+        "init": [
+          [
+            "B",
+            "B",
+            "B",
+            "B"
+          ],
+          [
+            "G",
+            null,
+            null,
+            "G"
+          ],
+          [
+            "W",
+            "W",
+            "W",
+            "W"
+          ]
+        ],
+        "goal": [
+          [
+            "W",
+            "W",
+            "W",
+            "W"
+          ],
+          [
+            "G",
+            null,
+            null,
+            "G"
+          ],
+          [
+            "B",
+            "B",
+            "B",
+            "B"
+          ]
+        ],
+        "hasInactiveInside": false
+      },
+      "solved": true,
+      "minMoves": 26,
+      "suggestedPar": 26,
+      "unlockThreshold": 39,
+      "solveTimeSec": 0.01,
+      "rank": 3
+    },
+    {
+      "index": 2,
+      "active": [
+        [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          false
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      ],
+      "init": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "goal": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "trimmed": {
+        "rows": 3,
+        "cols": 5,
+        "rowOffset": 1,
+        "colOffset": 0,
+        "init": [
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ],
+          [
+            "X",
+            null,
+            null,
+            null,
+            "X"
+          ],
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ]
+        ],
+        "goal": [
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ],
+          [
+            "X",
+            null,
+            null,
+            null,
+            "X"
+          ],
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ]
+        ],
+        "hasInactiveInside": true
+      },
+      "solved": true,
+      "minMoves": 34,
+      "suggestedPar": 34,
+      "unlockThreshold": 51,
+      "solveTimeSec": 0.04,
+      "rank": 4
+    },
+    {
+      "index": 3,
+      "active": [
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      ],
+      "init": [
+        [
+          "B",
+          "B",
+          null,
+          "B",
+          "B"
+        ],
+        [
+          "G",
+          null,
+          "G",
+          null,
+          "G"
+        ],
+        [
+          null,
+          "G",
+          null,
+          "G",
+          null
+        ],
+        [
+          "G",
+          null,
+          "G",
+          null,
+          "G"
+        ],
+        [
+          "W",
+          "W",
+          null,
+          "W",
+          "W"
+        ]
+      ],
+      "goal": [
+        [
+          "W",
+          "W",
+          null,
+          "W",
+          "W"
+        ],
+        [
+          "G",
+          null,
+          "G",
+          null,
+          "G"
+        ],
+        [
+          null,
+          "G",
+          null,
+          "G",
+          null
+        ],
+        [
+          "G",
+          null,
+          "G",
+          null,
+          "G"
+        ],
+        [
+          "B",
+          "B",
+          null,
+          "B",
+          "B"
+        ]
+      ],
+      "trimmed": {
+        "rows": 5,
+        "cols": 5,
+        "rowOffset": 0,
+        "colOffset": 0,
+        "init": [
+          [
+            "B",
+            "B",
+            null,
+            "B",
+            "B"
+          ],
+          [
+            "G",
+            "X",
+            "G",
+            "X",
+            "G"
+          ],
+          [
+            null,
+            "G",
+            null,
+            "G",
+            null
+          ],
+          [
+            "G",
+            "X",
+            "G",
+            "X",
+            "G"
+          ],
+          [
+            "W",
+            "W",
+            null,
+            "W",
+            "W"
+          ]
+        ],
+        "goal": [
+          [
+            "W",
+            "W",
+            null,
+            "W",
+            "W"
+          ],
+          [
+            "G",
+            "X",
+            "G",
+            "X",
+            "G"
+          ],
+          [
+            null,
+            "G",
+            null,
+            "G",
+            null
+          ],
+          [
+            "G",
+            "X",
+            "G",
+            "X",
+            "G"
+          ],
+          [
+            "B",
+            "B",
+            null,
+            "B",
+            "B"
+          ]
+        ],
+        "hasInactiveInside": true
+      },
+      "solved": true,
+      "minMoves": 42,
+      "suggestedPar": 42,
+      "unlockThreshold": 63,
+      "reusedFromOldDesign": 6,
+      "rank": 5
+    },
+    {
+      "index": 4,
+      "active": [
+        [
+          false,
+          true,
+          true,
+          true,
+          false
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          false
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          false,
+          true,
+          true,
+          true,
+          false
+        ]
+      ],
+      "init": [
+        [
+          null,
+          "B",
+          "B",
+          "B",
+          null
+        ],
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          null,
+          "W",
+          "W",
+          "W",
+          null
+        ]
+      ],
+      "goal": [
+        [
+          null,
+          "W",
+          "W",
+          "W",
+          null
+        ],
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          null,
+          "B",
+          "B",
+          "B",
+          null
+        ]
+      ],
+      "trimmed": {
+        "rows": 5,
+        "cols": 5,
+        "rowOffset": 0,
+        "colOffset": 0,
+        "init": [
+          [
+            "X",
+            "B",
+            "B",
+            "B",
+            "X"
+          ],
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ],
+          [
+            "X",
+            null,
+            null,
+            null,
+            "X"
+          ],
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ],
+          [
+            "X",
+            "W",
+            "W",
+            "W",
+            "X"
+          ]
+        ],
+        "goal": [
+          [
+            "X",
+            "W",
+            "W",
+            "W",
+            "X"
+          ],
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ],
+          [
+            "X",
+            null,
+            null,
+            null,
+            "X"
+          ],
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ],
+          [
+            "X",
+            "B",
+            "B",
+            "B",
+            "X"
+          ]
+        ],
+        "hasInactiveInside": true
+      },
+      "solved": true,
+      "minMoves": 44,
+      "suggestedPar": 44,
+      "unlockThreshold": 66,
+      "reusedFromOldDesign": 1,
+      "rank": 6
+    },
+    {
+      "index": 6,
+      "active": [
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      ],
+      "init": [
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          null,
+          "G",
+          null,
+          "G",
+          null
+        ],
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ]
+      ],
+      "goal": [
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          "W",
+          "W",
+          "W",
+          "W",
+          "W"
+        ],
+        [
+          null,
+          "G",
+          null,
+          "G",
+          null
+        ],
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        [
+          "B",
+          "B",
+          "B",
+          "B",
+          "B"
+        ]
+      ],
+      "trimmed": {
+        "rows": 5,
+        "cols": 5,
+        "rowOffset": 0,
+        "colOffset": 0,
+        "init": [
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ],
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ],
+          [
+            null,
+            "G",
+            null,
+            "G",
+            null
+          ],
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ],
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ]
+        ],
+        "goal": [
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ],
+          [
+            "W",
+            "W",
+            "W",
+            "W",
+            "W"
+          ],
+          [
+            null,
+            "G",
+            null,
+            "G",
+            null
+          ],
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ],
+          [
+            "B",
+            "B",
+            "B",
+            "B",
+            "B"
+          ]
+        ],
+        "hasInactiveInside": false
+      },
+      "solved": false,
+      "reason": "skipped \u2014 exceeds session compute budget; redesign with more empty cells or fewer pieces",
+      "nodesExplored": 9588100
+    }
+  ]
+}

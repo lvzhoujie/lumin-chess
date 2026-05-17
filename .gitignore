@@ -1,0 +1,37 @@
+# Secrets — NEVER commit
+.ftp-creds
+.ftp-credentials
+android/keystore/
+android/keystore.properties
+PLAY-STORE-RELEASE.md
+
+# Personal / unrelated files
+Peter_Lyu_Resume_2026.pdf
+engineering-copilot/
+resources/
+
+# Node / build outputs
+node_modules/
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/captures/
+
+# Capacitor sync output (rebuilt from index.html)
+www/
+
+# Web-deploy staging (rebuilt from index.html via build-web.sh)
+web-deploy/
+
+# Build artifacts — distribute via GitHub Releases instead
+lumin-chess.apk
+lumin-chess-release.apk
+lumin-chess-release.aab
+
+# Local environment / IDE
+.claude/
+.idea/
+*.iml
+.DS_Store
+*.log

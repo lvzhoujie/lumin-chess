@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lumin Chess</string>
+    <string name="title_activity_main">Lumin Chess</string>
+    <string name="package_name">com.lumi.lumichess</string>
+    <string name="custom_url_scheme">com.lumi.lumichess</string>
+</resources>

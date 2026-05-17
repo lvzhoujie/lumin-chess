@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumin Chess — Level Editor</title>
+<style>
+  :root {
+    --bg: #F5F4F2;
+    --surface: #FFFFFF;
+    --board: #D9D6D0;
+    --inactive: #2A2826;
+    --ink: #1C1B1A;
+    --muted: #7A7770;
+    --line: #E6E3DC;
+    --accent: #4F46E5;
+    --accent-soft: rgba(79, 70, 229, 0.14);
+    --accent-strong: rgba(79, 70, 229, 0.35);
+    --danger: #C73E3E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    padding: 20px;
+  }
+  .app {
+    max-width: 1240px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 300px 1fr 320px;
+    gap: 20px;
+  }
+  @media (max-width: 1100px) { .app { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(28,27,26,0.06);
+  }
+  h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.012em; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--muted); font-weight: 700; margin: 14px 0 8px;
+  }
+  h2:first-child { margin-top: 0; }
+  .btn {
+    padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--ink); font-size: 13px;
+    font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: all 0.12s ease;
+  }
+  .btn:hover { background: rgba(28,27,26,0.04); }
+  .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .btn.primary:hover { background: #000; }
+  .btn.accent { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn.danger { background: transparent; color: var(--danger); border-color: var(--line); }
+  .btn.danger:hover { background: rgba(199,62,62,0.08); }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+
+  /* Tools */
+  .tools { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .tool {
+    padding: 10px; border: 1.5px solid var(--line); border-radius: 10px;
+    background: var(--bg); cursor: pointer; display: flex; align-items: center;
+    gap: 8px; font-size: 13px; font-weight: 600; font-family: inherit;
+    color: var(--ink); transition: all 0.12s ease;
+  }
+  .tool:hover { background: rgba(28,27,26,0.04); }
+  .tool.active { border-color: var(--accent); background: var(--accent-soft); }
+  .swatch { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
+  .swatch.white { background: radial-gradient(circle at 32% 26%, #FFFFFF 0%, #F2EFE6 55%, #D4CFBE 100%); border: 1px solid rgba(0,0,0,0.08); }
+  .swatch.black { background: radial-gradient(circle at 32% 26%, #5b5853 0%, #2B2926 48%, #0E0D0B 100%); }
+  .swatch.gray { background: radial-gradient(circle at 32% 26%, #C1BEB8 0%, #8A8782 50%, #4F4D49 100%); }
+  .swatch.empty { background: var(--surface); border: 1.5px dashed var(--line); }
+  .swatch.toggle { background: linear-gradient(135deg, var(--surface) 0 50%, var(--inactive) 50% 100%); border: 1px solid var(--line); }
+
+  /* Board */
+  .board-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .board-meta { display: flex; gap: 16px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .board-meta b { color: var(--ink); font-weight: 700; }
+  .board {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+    padding: 10px; background: var(--board); border-radius: 22px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px rgba(28,27,26,0.08);
+    width: min(70vh, 560px); aspect-ratio: 1 / 1;
+  }
+  .cell {
+    position: relative; background: var(--surface); border-radius: 12px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.12s ease, transform 0.08s ease;
+  }
+  .cell:hover { background: var(--accent-soft); }
+  .cell:active { transform: scale(0.97); }
+  .cell.inactive { background: var(--inactive); cursor: pointer; }
+  .cell.inactive:hover { background: #3a3835; }
+  .cell .coord {
+    position: absolute; bottom: 4px; left: 6px; font-size: 10px;
+    color: rgba(0,0,0,0.20); font-variant-numeric: tabular-nums; pointer-events: none;
+  }
+  .cell.inactive .coord { color: rgba(255,255,255,0.20); }
+  .piece { width: 72%; height: 72%; border-radius: 50%; pointer-events: none; z-index: 1; }
+  .piece.white { background: radial-gradient(circle at 32% 26%, #FFFFFF 0%, #F2EFE6 55%, #D4CFBE 100%); box-shadow: 0 4px 10px rgba(0,0,0,0.16), inset -2px -3px 6px rgba(0,0,0,0.08), inset 2px 2px 4px rgba(255,255,255,0.7); }
+  .piece.black { background: radial-gradient(circle at 32% 26%, #5b5853 0%, #2B2926 48%, #0E0D0B 100%); box-shadow: 0 4px 10px rgba(0,0,0,0.32), inset -2px -3px 6px rgba(0,0,0,0.45); }
+  .piece.gray { background: radial-gradient(circle at 32% 26%, #C1BEB8 0%, #8A8782 50%, #4F4D49 100%); box-shadow: 0 4px 10px rgba(0,0,0,0.22), inset -2px -3px 6px rgba(0,0,0,0.24); }
+
+  /* Levels list */
+  .levels { max-height: 360px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
+  .level-item {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    border-bottom: 1px solid var(--line); cursor: pointer; font-size: 13px;
+  }
+  .level-item:last-child { border-bottom: none; }
+  .level-item:hover { background: var(--bg); }
+  .level-item.active { background: var(--accent-soft); }
+  .level-item .lid { font-weight: 700; color: var(--muted); min-width: 24px; font-variant-numeric: tabular-nums; }
+  .level-item .lname { flex: 1; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .level-item .del { color: var(--muted); background: transparent; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 16px; line-height: 1; }
+  .level-item .del:hover { background: rgba(199,62,62,0.12); color: var(--danger); }
+
+  .hint { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .stack > * + * { margin-top: 8px; }
+
+  textarea {
+    width: 100%; min-height: 140px; padding: 10px;
+    border: 1px solid var(--line); border-radius: 8px;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
+    font-size: 11px; background: var(--bg); color: var(--ink); resize: vertical;
+  }
+  details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+  details summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); }
+  details[open] summary { margin-bottom: 8px; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    opacity: 0; transition: opacity 0.2s ease; pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- LEFT: Levels + storage -->
+  <div class="panel">
+    <h1>Lumin Chess</h1>
+    <div class="subtitle">Level editor — 5×5 canvas · goal is always W ↔ B</div>
+
+    <h2>Levels</h2>
+    <div class="levels" id="levelsList"></div>
+    <div class="row" style="margin-top: 10px;">
+      <button class="btn primary" id="newLevelBtn">+ New level</button>
+      <button class="btn" id="duplicateBtn">Duplicate</button>
+    </div>
+
+    <h2>Storage</h2>
+    <div class="stack">
+      <div class="row">
+        <button class="btn accent" id="downloadJsonBtn">Download JSON</button>
+        <button class="btn accent" id="downloadMdBtn">Download MD</button>
+      </div>
+      <button class="btn" id="copyJsonBtn">Copy JSON to clipboard</button>
+      <button class="btn" id="importBtn">Import JSON…</button>
+      <input type="file" id="importFile" accept=".json" style="display:none">
+    </div>
+    <div class="hint">Levels auto-save to your browser. Use Download to write <b>levels.json</b> + <b>levels.md</b> to your Downloads folder.</div>
+  </div>
+
+  <!-- CENTER: Board -->
+  <div class="panel board-wrap">
+    <div class="board-meta" id="boardMeta"></div>
+    <div class="board" id="board"></div>
+    <div class="hint" id="boardHint">Click cells with the selected tool. Right-click clears. All cells start active — toggle off the ones you want excluded.</div>
+  </div>
+
+  <!-- RIGHT: Tools + preview -->
+  <div class="panel">
+    <h2>Tools</h2>
+    <div class="tools" id="toolPalette">
+      <button class="tool active" data-tool="toggle"><div class="swatch toggle"></div>Toggle active</button>
+      <button class="tool" data-tool="erase"><div class="swatch empty"></div>Clear cell</button>
+      <button class="tool" data-tool="W"><div class="swatch white"></div>White</button>
+      <button class="tool" data-tool="B"><div class="swatch black"></div>Black</button>
+      <button class="tool" data-tool="G" style="grid-column: span 2;"><div class="swatch gray"></div>Gray (neutral)</button>
+    </div>
+    <div class="hint">
+      Tap <b>Toggle active</b> to remove a cell from the playable shape (it goes dark). All other cells stay active by default.<br>
+      The goal state is auto-derived: every <b>W</b> must become <b>B</b> and every <b>B</b> must become <b>W</b>. Gray pieces stay put.
+    </div>
+
+    <h2>Quick actions</h2>
+    <div class="stack">
+      <button class="btn" id="clearPiecesBtn">Clear all pieces</button>
+      <button class="btn" id="activateAllBtn">Mark all cells active</button>
+      <button class="btn danger" id="resetBoardBtn">Reset this level</button>
+    </div>
+
+    <details>
+      <summary>Live JSON preview</summary>
+      <textarea id="jsonPreview" readonly></textarea>
+    </details>
+    <details>
+      <summary>Live Markdown preview</summary>
+      <textarea id="mdPreview" readonly></textarea>
+    </details>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  const SIZE = 5;
+  const STORAGE_KEY = 'lumin-chess-editor-v3';
+
+  // ─── State ──────────────────────────────────────────────────────────────
+  /** Each level:
+   *  { active: bool[5][5], init: ('W'|'B'|'G'|null)[5][5] }
+   *  Goal is auto-derived: W↔B swap, G stays.
+   */
+  let levels = [];
+  let currentIdx = 0;
+  let tool = 'toggle';
+
+  function makeMatrix(val) {
+    const m = [];
+    for (let r = 0; r < SIZE; r++) {
+      const row = [];
+      for (let c = 0; c < SIZE; c++) row.push(val);
+      m.push(row);
+    }
+    return m;
+  }
+  function cloneMatrix(m) { return m.map(r => r.slice()); }
+
+  function newLevel() {
+    return { active: makeMatrix(true), init: makeMatrix(null) };
+  }
+
+  function deriveGoal(lv) {
+    const g = makeMatrix(null);
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+      if (!lv.active[r][c]) continue;
+      const v = lv.init[r][c];
+      if (v === 'W') g[r][c] = 'B';
+      else if (v === 'B') g[r][c] = 'W';
+      else g[r][c] = v;     // gray or null
+    }
+    return g;
+  }
+
+  // ─── Persistence ────────────────────────────────────────────────────────
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ levels, currentIdx })); } catch(e){}
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.levels) && parsed.levels.length) {
+        levels = parsed.levels.map(normalize);
+        currentIdx = Math.min(parsed.currentIdx || 0, levels.length - 1);
+        return true;
+      }
+    } catch(e){}
+    return false;
+  }
+  function normalize(lv) {
+    function fix(m, fallback) {
+      const out = makeMatrix(fallback);
+      if (!Array.isArray(m)) return out;
+      for (let r = 0; r < SIZE; r++) {
+        if (!Array.isArray(m[r])) continue;
+        for (let c = 0; c < SIZE; c++) {
+          if (m[r][c] !== undefined) out[r][c] = m[r][c];
+        }
+      }
+      return out;
+    }
+    return {
+      active: fix(lv.active, true),
+      init: fix(lv.init, null)
+    };
+  }
+
+  // ─── Trim to rectangular bounding box (matches game format) ─────────────
+  function trimLevel(lv) {
+    let rMin = SIZE, rMax = -1, cMin = SIZE, cMax = -1;
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+      if (lv.active[r][c]) {
+        if (r < rMin) rMin = r;
+        if (r > rMax) rMax = r;
+        if (c < cMin) cMin = c;
+        if (c > cMax) cMax = c;
+      }
+    }
+    if (rMax < 0) return null;
+    const rows = rMax - rMin + 1;
+    const cols = cMax - cMin + 1;
+    const init = [], goal = [];
+    const derivedGoal = deriveGoal(lv);
+    let hasInactiveInside = false;
+    for (let r = 0; r < rows; r++) {
+      const ir = [], gr = [];
+      for (let c = 0; c < cols; c++) {
+        const R = r + rMin, C = c + cMin;
+        if (!lv.active[R][C]) {
+          hasInactiveInside = true;
+          ir.push('X'); gr.push('X');
+        } else {
+          ir.push(lv.init[R][C]);
+          gr.push(derivedGoal[R][C]);
+        }
+      }
+      init.push(ir); goal.push(gr);
+    }
+    return { rows, cols, rowOffset: rMin, colOffset: cMin, init, goal, hasInactiveInside };
+  }
+
+  // ─── Exports ────────────────────────────────────────────────────────────
+  function exportLevels() {
+    return {
+      schema: 'lumin-chess-level/v3',
+      generated: new Date().toISOString(),
+      canvas: { rows: SIZE, cols: SIZE },
+      goalRule: 'swap-W-B (gray stays, blocked cells = X)',
+      levels: levels.map((lv, i) => {
+        const trimmed = trimLevel(lv);
+        return {
+          index: i,
+          active: lv.active,
+          init: lv.init,
+          goal: deriveGoal(lv),    // explicit, derived
+          trimmed: trimmed
+        };
+      })
+    };
+  }
+
+  function pieceChar(v) {
+    if (v === 'W') return 'W';
+    if (v === 'B') return 'B';
+    if (v === 'G') return 'G';
+    if (v === 'X') return '#';
+    return '.';
+  }
+  function gridToAscii(grid) {
+    return grid.map(row => row.map(pieceChar).join(' ')).join('\n');
+  }
+
+  function exportMarkdown() {
+    const lines = [];
+    lines.push('# Lumin Chess — Level designs');
+    lines.push('');
+    lines.push('_Generated ' + new Date().toISOString() + '_');
+    lines.push('');
+    lines.push('5×5 canvas. Goal is implicit: every **W** must become **B** and every **B** must become **W** (gray stays put).');
+    lines.push('Final id, name, and par will be assigned later after solving and ranking.');
+    lines.push('');
+    lines.push('Legend: `W` white · `B` black · `G` gray (neutral) · `.` empty · `#` blocked / off-board');
+    lines.push('');
+    levels.forEach((lv, i) => {
+      const t = trimLevel(lv);
+      lines.push('## Design #' + (i + 1));
+      lines.push('');
+      if (t) {
+        lines.push('- **Board size:** ' + t.rows + ' × ' + t.cols + (t.hasInactiveInside ? ' (with blocked cells)' : ''));
+        lines.push('- **Canvas offset:** row ' + t.rowOffset + ', col ' + t.colOffset);
+      } else {
+        lines.push('- **Board size:** _(no active cells)_');
+      }
+      lines.push('');
+      lines.push('**Init (starting state):**');
+      lines.push('');
+      lines.push('```');
+      lines.push(t ? gridToAscii(t.init) : '(empty)');
+      lines.push('```');
+      lines.push('');
+      lines.push('**Goal (derived — W↔B swap):**');
+      lines.push('');
+      lines.push('```');
+      lines.push(t ? gridToAscii(t.goal) : '(empty)');
+      lines.push('```');
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  // ─── Rendering ──────────────────────────────────────────────────────────
+  const boardEl = document.getElementById('board');
+  const boardMetaEl = document.getElementById('boardMeta');
+  const levelsListEl = document.getElementById('levelsList');
+  const jsonPreviewEl = document.getElementById('jsonPreview');
+  const mdPreviewEl = document.getElementById('mdPreview');
+
+  const cellEls = [];
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.idx = i;
+    const coord = document.createElement('span');
+    coord.className = 'coord';
+    const r = Math.floor(i / SIZE), c = i % SIZE;
+    coord.textContent = r + ',' + c;
+    cell.appendChild(coord);
+    boardEl.appendChild(cell);
+    cellEls.push(cell);
+  }
+
+  function renderBoard() {
+    const lv = levels[currentIdx];
+    if (!lv) return;
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+      const idx = r * SIZE + c;
+      const cell = cellEls[idx];
+      cell.querySelectorAll('.piece').forEach(el => el.remove());
+      cell.classList.toggle('inactive', !lv.active[r][c]);
+      if (lv.active[r][c]) {
+        const v = lv.init[r][c];
+        if (v) {
+          const p = document.createElement('div');
+          p.className = 'piece ' + (v === 'W' ? 'white' : v === 'B' ? 'black' : 'gray');
+          cell.appendChild(p);
+        }
+      }
+    }
+    const t = trimLevel(lv);
+    let counts = { W: 0, B: 0, G: 0 };
+    let active = 0;
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+      if (lv.active[r][c]) active++;
+      const v = lv.init[r][c];
+      if (v === 'W') counts.W++; else if (v === 'B') counts.B++; else if (v === 'G') counts.G++;
+    }
+    const balanced = counts.W === counts.B;
+    boardMetaEl.innerHTML =
+      'Bounds: <b>' + (t ? t.rows + '×' + t.cols : '—') + '</b>' +
+      ' &nbsp;·&nbsp; Active: <b>' + active + '</b>' +
+      ' &nbsp;·&nbsp; W <b>' + counts.W + '</b> · B <b>' + counts.B + '</b> · G <b>' + counts.G + '</b>' +
+      (balanced ? '' : ' &nbsp;·&nbsp; <span style="color:var(--danger)">W≠B</span>');
+  }
+
+  function renderLevelsList() {
+    levelsListEl.innerHTML = '';
+    levels.forEach((lv, i) => {
+      const t = trimLevel(lv);
+      const sz = t ? (t.rows + '×' + t.cols) : 'empty';
+      const item = document.createElement('div');
+      item.className = 'level-item' + (i === currentIdx ? ' active' : '');
+      item.innerHTML =
+        '<span class="lid">#' + (i + 1) + '</span>' +
+        '<span class="lname">Design ' + (i + 1) + ' &middot; <span style="color:var(--muted)">' + sz + '</span></span>' +
+        '<button class="del" title="Delete">×</button>';
+      item.addEventListener('click', e => {
+        if (e.target.classList.contains('del')) return;
+        currentIdx = i;
+        renderAll();
+        save();
+      });
+      item.querySelector('.del').addEventListener('click', e => {
+        e.stopPropagation();
+        if (levels.length === 1) { toast('Need at least one level'); return; }
+        if (!confirm('Delete Design ' + (i + 1) + '?')) return;
+        levels.splice(i, 1);
+        if (currentIdx >= levels.length) currentIdx = levels.length - 1;
+        renderAll();
+        save();
+      });
+      levelsListEl.appendChild(item);
+    });
+  }
+
+  function renderPreviews() {
+    jsonPreviewEl.value = JSON.stringify(exportLevels(), null, 2);
+    mdPreviewEl.value = exportMarkdown();
+  }
+  function renderAll() { renderBoard(); renderLevelsList(); renderPreviews(); }
+
+  // ─── Interactions ───────────────────────────────────────────────────────
+  function applyTool(r, c, t) {
+    const lv = levels[currentIdx];
+    if (t === 'toggle') {
+      lv.active[r][c] = !lv.active[r][c];
+      if (!lv.active[r][c]) lv.init[r][c] = null;
+    } else if (t === 'erase') {
+      lv.init[r][c] = null;
+    } else if (t === 'W' || t === 'B' || t === 'G') {
+      if (!lv.active[r][c]) lv.active[r][c] = true;
+      lv.init[r][c] = t;
+    }
+  }
+
+  let isDragging = false;
+  let dragButton = 0;
+  boardEl.addEventListener('mousedown', e => {
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    isDragging = true;
+    dragButton = e.button;
+    const idx = +cell.dataset.idx;
+    const r = Math.floor(idx / SIZE), c = idx % SIZE;
+    if (e.button === 2) applyTool(r, c, 'erase');
+    else applyTool(r, c, tool);
+    renderAll();
+    save();
+    e.preventDefault();
+  });
+  document.addEventListener('mouseup', () => { isDragging = false; });
+  boardEl.addEventListener('mouseover', e => {
+    if (!isDragging) return;
+    const cell = e.target.closest('.cell');
+    if (!cell) return;
+    const idx = +cell.dataset.idx;
+    const r = Math.floor(idx / SIZE), c = idx % SIZE;
+    if (dragButton === 2) applyTool(r, c, 'erase');
+    else applyTool(r, c, tool);
+    renderAll();
+  });
+  boardEl.addEventListener('contextmenu', e => e.preventDefault());
+
+  // Tool palette
+  document.getElementById('toolPalette').addEventListener('click', e => {
+    const btn = e.target.closest('.tool');
+    if (!btn) return;
+    tool = btn.dataset.tool;
+    document.querySelectorAll('.tool').forEach(b => b.classList.toggle('active', b === btn));
+  });
+
+  // Buttons
+  document.getElementById('newLevelBtn').addEventListener('click', () => {
+    levels.push(newLevel());
+    currentIdx = levels.length - 1;
+    renderAll(); save();
+  });
+  document.getElementById('duplicateBtn').addEventListener('click', () => {
+    const src = levels[currentIdx];
+    levels.push({ active: cloneMatrix(src.active), init: cloneMatrix(src.init) });
+    currentIdx = levels.length - 1;
+    renderAll(); save();
+  });
+  document.getElementById('clearPiecesBtn').addEventListener('click', () => {
+    levels[currentIdx].init = makeMatrix(null);
+    renderAll(); save();
+  });
+  document.getElementById('activateAllBtn').addEventListener('click', () => {
+    levels[currentIdx].active = makeMatrix(true);
+    renderAll(); save();
+  });
+  document.getElementById('resetBoardBtn').addEventListener('click', () => {
+    if (!confirm('Reset this design to a blank 5×5?')) return;
+    levels[currentIdx] = newLevel();
+    renderAll(); save();
+  });
+
+  // Export
+  function downloadFile(name, content, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  document.getElementById('downloadJsonBtn').addEventListener('click', () => {
+    downloadFile('levels.json', JSON.stringify(exportLevels(), null, 2), 'application/json');
+    toast('levels.json saved to Downloads');
+  });
+  document.getElementById('downloadMdBtn').addEventListener('click', () => {
+    downloadFile('levels.md', exportMarkdown(), 'text/markdown');
+    toast('levels.md saved to Downloads');
+  });
+  document.getElementById('copyJsonBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(exportLevels(), null, 2));
+      toast('JSON copied');
+    } catch(e) { toast('Copy failed'); }
+  });
+
+  // Import
+  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data.levels)) throw new Error('Missing levels[]');
+        levels = data.levels.map(normalize);
+        if (!levels.length) levels = [newLevel()];
+        currentIdx = 0;
+        renderAll(); save();
+        toast('Imported ' + levels.length + ' level(s)');
+      } catch(err) { alert('Import failed: ' + err.message); }
+    };
+    reader.readAsText(f);
+    e.target.value = '';
+  });
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove('show'), 1600);
+  }
+
+  // Boot
+  if (!load()) {
+    levels.push(newLevel());
+    currentIdx = 0;
+  }
+  renderAll();
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === '1') document.querySelector('[data-tool="toggle"]').click();
+    else if (e.key === '2' || e.key.toLowerCase() === 'x') document.querySelector('[data-tool="erase"]').click();
+    else if (e.key.toLowerCase() === 'w') document.querySelector('[data-tool="W"]').click();
+    else if (e.key.toLowerCase() === 'b') document.querySelector('[data-tool="B"]').click();
+    else if (e.key.toLowerCase() === 'g') document.querySelector('[data-tool="G"]').click();
+  });
+})();
+</script>
+</body>
+</html>
