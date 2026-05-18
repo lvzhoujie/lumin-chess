@@ -1,6 +1,6 @@
 # Lumin Chess — Level Integration Spec
 
-This document is the handoff for an engineering agent (e.g. Claude Code) tasked with taking levels designed in `level-editor.html` and adding them to the live game in `index.html`.
+This document is the handoff for an engineer (human or coding agent) tasked with taking levels designed in `level-editor.html` and adding them to the live game in `index.html`.
 
 It covers:
 
