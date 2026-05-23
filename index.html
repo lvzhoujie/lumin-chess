@@ -1314,7 +1314,7 @@
   // Bumped automatically by scripts/deploy-ftp.py on each Bluehost deploy.
   // The deploy script does a literal regex replace, so don't rename or reformat
   // this declaration without updating the script.
-  var APP_VERSION = 'v1.15';
+  var APP_VERSION = 'v1.16';
 
   // ─── Levels ──────────────────────────────────────────────────────────────
   // Ten levels: 3 originals + 7 from levels.json (BFS-verified pars). Sorted by
@@ -1503,24 +1503,22 @@
     },
     {
       id: 10,
-      // Last level — BFS skipped this one (state space too large), so par is
-      // unknown. UI shows "solve to clear" instead of a threshold. The grays
-      // sit on the two side cells of the middle row (cols 0 + 4) and stay
-      // put; the B/W rows swap top↔bottom around them.
+      // Last level — three grays flank the left of the middle row; the right
+      // half is the 2-cell passage that all B/W traffic squeezes through.
       name: 'Final field',
       optimum: null,
       rows: 5, cols: 5,
       init: [
         ['B', 'B', 'B', 'B', 'B'],
         ['B', 'B', 'B', 'B', 'B'],
-        ['G', null, null, null, 'G'],
+        ['G', 'G', null, null, 'G'],
         ['W', 'W', 'W', 'W', 'W'],
         ['W', 'W', 'W', 'W', 'W']
       ],
       goal: [
         ['W', 'W', 'W', 'W', 'W'],
         ['W', 'W', 'W', 'W', 'W'],
-        ['G', null, null, null, 'G'],
+        ['G', 'G', null, null, 'G'],
         ['B', 'B', 'B', 'B', 'B'],
         ['B', 'B', 'B', 'B', 'B']
       ]
