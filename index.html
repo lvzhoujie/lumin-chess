@@ -229,6 +229,10 @@
     background: radial-gradient(circle at 30% 25%, #FFFFFF 0%, #E8E3D7 80%);
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.1);
   }
+  .goal-marker.gray {
+    background: radial-gradient(circle at 30% 25%, #C1BEB8 0%, #8A8782 70%);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
   .controls {
     display: flex;
     gap: 12px;
@@ -1310,7 +1314,7 @@
   // Bumped automatically by scripts/deploy-ftp.py on each Bluehost deploy.
   // The deploy script does a literal regex replace, so don't rename or reformat
   // this declaration without updating the script.
-  var APP_VERSION = 'v1.13';
+  var APP_VERSION = 'v1.14';
 
   // ─── Levels ──────────────────────────────────────────────────────────────
   // Ten levels: 3 originals + 7 from levels.json (BFS-verified pars). Sorted by
@@ -1500,7 +1504,9 @@
     {
       id: 10,
       // Last level — BFS skipped this one (state space too large), so par is
-      // unknown. UI shows "solve to clear" instead of a threshold.
+      // unknown. UI shows "solve to clear" instead of a threshold. The grays
+      // start in the inner middle-row cells (cols 1 + 3) and must finish on
+      // the two side cells (cols 0 + 4); the B/W rows still swap top↔bottom.
       name: 'Final field',
       optimum: null,
       rows: 5, cols: 5,
@@ -1514,7 +1520,7 @@
       goal: [
         ['W', 'W', 'W', 'W', 'W'],
         ['W', 'W', 'W', 'W', 'W'],
-        [null, 'G', null, 'G', null],
+        ['G', null, null, null, 'G'],
         ['B', 'B', 'B', 'B', 'B'],
         ['B', 'B', 'B', 'B', 'B']
       ]
@@ -2312,6 +2318,7 @@
   function markerClass(code) {
     if (code === 'B') return 'goal-marker black';
     if (code === 'W') return 'goal-marker white';
+    if (code === 'G') return 'goal-marker gray';
     return 'goal-marker';
   }
 
@@ -2353,8 +2360,11 @@
             icon.textContent = DIRS[targets[key]].label;
             cell.appendChild(icon);
           }
-          // Only B and W get goal markers — G is stationary, X is invariant.
-          if (markers && (markers[r][c] === 'B' || markers[r][c] === 'W') && grid[r][c] !== markers[r][c]) {
+          // B / W / G get goal markers; X is invariant. The grid-mismatch
+          // check keeps the marker hidden once a piece is already in place,
+          // so Levels 4 + 7 (grays that don't move) stay marker-free while
+          // Level 10 (grays that DO move to the sides) shows their target.
+          if (markers && (markers[r][c] === 'B' || markers[r][c] === 'W' || markers[r][c] === 'G') && grid[r][c] !== markers[r][c]) {
             var marker = document.createElement('div');
             marker.className = markerClass(markers[r][c]);
             cell.appendChild(marker);
